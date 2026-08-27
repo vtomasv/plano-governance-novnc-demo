@@ -1,0 +1,225 @@
+name: plano-governance-demo
+
+x-python-service: &python-service
+  restart: unless-stopped
+  networks:
+    - control
+  security_opt:
+    - no-new-privileges:true
+  read_only: true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+
+x-desktop: &desktop
+  build:
+    context: ./desktop
+    args:
+      NOVNC_VERSION: v1.7.0
+      WEBSOCKIFY_VERSION: 0.13.0
+  restart: unless-stopped
+  depends_on:
+    cert-init:
+      condition: service_completed_successfully
+    proxy-interceptor:
+      condition: service_healthy
+    governed-agent:
+      condition: service_healthy
+  environment:
+    VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+    PROXY_URL: http://proxy-interceptor:8080
+    CA_FILE: /certs/plano-demo-root-ca.crt
+  volumes:
+    - demo-certs:/certs:ro
+  networks:
+    - control
+  shm_size: 1gb
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  cert-init:
+    build:
+      context: .
+      dockerfile: cert-init/Dockerfile
+    environment:
+      FORCE_CA_REGEN: ${FORCE_CA_REGEN:-0}
+    volumes:
+      - demo-certs:/certs
+    network_mode: none
+    restart: "no"
+
+  policy-guard:
+    <<: *python-service
+    build:
+      context: ./policy-guard
+    environment:
+      LOG_PROMPT_BODIES: ${LOG_PROMPT_BODIES:-false}
+    ports:
+      - "127.0.0.1:10500:10500"
+
+  provider-sim:
+    <<: *python-service
+    build:
+      context: ./provider-sim
+    networks:
+      - control
+      - upstream-sim
+    ports:
+      - "127.0.0.1:10501:10501"
+
+  provider-web-sim:
+    image: nginx:1.28.0-alpine
+    restart: unless-stopped
+    depends_on:
+      cert-init:
+        condition: service_completed_successfully
+      provider-sim:
+        condition: service_healthy
+    volumes:
+      - ./provider-sim/nginx.conf:/etc/nginx/nginx.conf:ro
+      - demo-certs:/certs:ro
+    ports:
+      - "127.0.0.1:18443:8443"
+    networks:
+      upstream-sim:
+        aliases:
+          - chatgpt.demo.local
+          - claude.demo.local
+          - grok.demo.local
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=16m
+      - /var/run:size=4m
+      - /tmp:size=16m
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.68.0
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    networks:
+      - control
+    security_opt:
+      - no-new-privileges:true
+
+  plano:
+    image: plano-governance-demo/plano:0.4.36
+    build:
+      context: ./plano
+    restart: unless-stopped
+    depends_on:
+      policy-guard:
+        condition: service_healthy
+      provider-sim:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+    volumes:
+      - ./plano/config.local.yaml:/app/plano_config.yaml:ro
+    ports:
+      - "127.0.0.1:${PLANO_PORT:-12000}:12000"
+      - "127.0.0.1:8001:8001"
+      - "127.0.0.1:19901:9901"
+    networks:
+      - control
+      - egress
+    security_opt:
+      - no-new-privileges:true
+
+  governed-agent:
+    <<: *python-service
+    build:
+      context: ./governed-agent
+    restart: unless-stopped
+    depends_on:
+      plano:
+        condition: service_started
+    environment:
+      PLANO_BASE_URL: http://plano:12000
+      MAX_PROMPT_CHARS: 12000
+    ports:
+      - "127.0.0.1:10600:10600"
+
+  proxy-interceptor:
+    build:
+      context: ./proxy-interceptor
+    restart: unless-stopped
+    depends_on:
+      cert-init:
+        condition: service_completed_successfully
+      plano:
+        condition: service_started
+    environment:
+      PLANO_POLICY_URL: http://plano:12000/v1/chat/completions
+      POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
+      MITMWEB_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
+      MAX_INSPECTION_BODY_BYTES: 2097152
+    volumes:
+      - demo-certs:/certs:ro
+    ports:
+      - "127.0.0.1:${MITMPROXY_UI_PORT:-8081}:8081"
+    networks:
+      - control
+      - upstream-sim
+      - egress
+    security_opt:
+      - no-new-privileges:true
+
+  desktop-chatgpt:
+    <<: *desktop
+    environment:
+      PROVIDER: chatgpt
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://proxy-interceptor:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+    volumes:
+      - demo-certs:/certs:ro
+      - chatgpt-profile:/home/demo/.config/chromium
+    ports:
+      - "127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}:6080"
+
+  desktop-claude:
+    <<: *desktop
+    environment:
+      PROVIDER: claude
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://proxy-interceptor:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+    volumes:
+      - demo-certs:/certs:ro
+      - claude-profile:/home/demo/.config/chromium
+    ports:
+      - "127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}:6080"
+
+  desktop-grok:
+    <<: *desktop
+    environment:
+      PROVIDER: grok
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://proxy-interceptor:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+    volumes:
+      - demo-certs:/certs:ro
+      - grok-profile:/home/demo/.config/chromium
+    ports:
+      - "127.0.0.1:${GROK_NOVNC_PORT:-6082}:6080"
+
+networks:
+  control:
+    internal: true
+  upstream-sim:
+    internal: true
+  egress:
+
+volumes:
+  demo-certs:
+  chatgpt-profile:
+  claude-profile:
+  grok-profile:

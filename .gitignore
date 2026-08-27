@@ -1,0 +1,21 @@
+.env
+certs/*
+!certs/.gitkeep
+runtime/
+vendor/
+research/
+dist/
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.log
+*.swp
+.DS_Store
+.pytest_cache/
+
+# Credenciales y perfiles de los proveedores web
+profiles/
+auth/
+*.pem
+*.key
+*.p12

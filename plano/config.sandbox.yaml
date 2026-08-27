@@ -1,0 +1,78 @@
+version: v0.3.0
+
+agents:
+  - id: governed_chat_agent
+    url: http://127.0.0.1:10600
+
+filters:
+  - id: argentina_president_guard
+    url: http://127.0.0.1:10500
+    type: http
+
+listeners:
+  - type: model
+    name: governed_llm_gateway
+    address: 0.0.0.0
+    port: 12000
+    max_retries: 1
+    input_filters:
+      - argentina_president_guard
+
+  - type: agent
+    name: governed_agent_gateway
+    address: 0.0.0.0
+    port: 8001
+    router: plano_orchestrator_v1
+    agents:
+      - id: governed_chat_agent
+        description: >-
+          Agente de chat corporativo que envía todas sus llamadas LLM al listener
+          de modelos de Plano y demuestra controles de prevención de fuga de datos.
+        input_filters:
+          - argentina_president_guard
+
+model_providers:
+  - model: custom/local-chatgpt
+    base_url: http://127.0.0.1:10501/v1
+    provider_interface: openai
+    access_key: local-demo-key
+    default: true
+  - model: custom/local-claude
+    base_url: http://127.0.0.1:10501/v1
+    provider_interface: openai
+    access_key: local-demo-key
+  - model: custom/local-grok
+    base_url: http://127.0.0.1:10501/v1
+    provider_interface: openai
+    access_key: local-demo-key
+
+model_aliases:
+  chatgpt-demo:
+    target: local-chatgpt
+  claude-demo:
+    target: local-claude
+  grok-demo:
+    target: local-grok
+  governed-default:
+    target: local-chatgpt
+
+routing_preferences:
+  - name: general_chat
+    description: Conversación general y consultas breves.
+    models:
+      - custom/local-chatgpt
+      - custom/local-claude
+  - name: analysis_and_writing
+    description: Análisis detallado, síntesis y redacción estructurada.
+    models:
+      - custom/local-claude
+      - custom/local-chatgpt
+  - name: current_events_style
+    description: Preguntas de actualidad y respuestas concisas.
+    models:
+      - custom/local-grok
+      - custom/local-chatgpt
+
+tracing:
+  random_sampling: 100
+  opentracing_grpc_endpoint: http://127.0.0.1:4317

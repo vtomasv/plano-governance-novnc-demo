@@ -1,0 +1,11 @@
+services:
+  plano:
+    volumes:
+      - ./plano/config.real-api.yaml:/app/plano_config.yaml:ro
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Defina OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?Defina ANTHROPIC_API_KEY}
+      GROK_API_KEY: ${GROK_API_KEY:?Defina GROK_API_KEY}
+    networks:
+      - control
+      - egress

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plano Governed AI Desktop</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#121a2e; --panel2:#17233d; --text:#edf2ff; --muted:#9daccc; --blue:#69a7ff; --green:#42d392; --red:#ff6b7a; --line:#263756; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 10% 0%,#18294c 0,#0b1020 42%); color:var(--text); font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:20px 28px; border-bottom:1px solid var(--line); background:rgba(9,14,29,.88); }
+    h1 { margin:0; font-size:22px; letter-spacing:-.02em; }
+    .subtitle { color:var(--muted); margin-top:4px; font-size:13px; }
+    .badges { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    .badge { border:1px solid var(--line); background:#101a30; border-radius:999px; padding:7px 11px; font-size:12px; }
+    .badge.ok { color:var(--green); border-color:#245b47; }
+    main { display:grid; grid-template-columns:290px minmax(0,1fr); gap:18px; padding:18px; height:calc(100vh - 83px); }
+    aside,.chat { border:1px solid var(--line); border-radius:16px; background:rgba(18,26,46,.93); overflow:hidden; box-shadow:0 18px 60px rgba(0,0,0,.22); }
+    aside { padding:18px; }
+    label { display:block; color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin:14px 0 8px; }
+    select,input,textarea,button { font:inherit; }
+    select,input,textarea { width:100%; color:var(--text); background:#0d1528; border:1px solid var(--line); border-radius:10px; padding:11px 12px; outline:none; }
+    textarea:focus,select:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(105,167,255,.13); }
+    .provider { display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; margin-bottom:14px; }
+    .dot { width:12px; height:12px; border-radius:50%; background:var(--blue); box-shadow:0 0 18px var(--blue); }
+    .rule { background:#0d1528; border:1px solid var(--line); border-radius:12px; padding:13px; margin-top:14px; color:var(--muted); line-height:1.45; font-size:13px; }
+    .rule strong { color:var(--text); }
+    .side-actions { display:grid; gap:9px; margin-top:16px; }
+    button,a.button { border:0; border-radius:10px; padding:11px 14px; cursor:pointer; font-weight:800; text-align:center; text-decoration:none; }
+    .primary { background:var(--blue); color:#071124; }
+    .secondary { background:#20304f; color:var(--text); }
+    .danger { background:#3a1d28; color:#ff9aa5; }
+    .chat { display:grid; grid-template-rows:auto 1fr auto; min-height:0; }
+    .chat-head { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+    .messages { overflow:auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+    .message { max-width:80%; border-radius:14px; padding:13px 15px; white-space:pre-wrap; line-height:1.5; border:1px solid var(--line); }
+    .message.user { align-self:flex-end; background:#1b335d; }
+    .message.assistant { align-self:flex-start; background:#131f36; }
+    .message.blocked { align-self:flex-start; background:#371b25; border-color:#71313f; color:#ffd5da; }
+    .meta { color:var(--muted); font-size:11px; margin-bottom:6px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; }
+    form { border-top:1px solid var(--line); padding:16px; background:#0f172a; }
+    textarea { resize:none; min-height:84px; }
+    .compose-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px; }
+    .checks { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+    .checks input { width:auto; }
+    .status { font-size:13px; color:var(--muted); }
+    .status.allow { color:var(--green); }
+    .status.deny { color:var(--red); }
+    @media (max-width: 820px) { main { grid-template-columns:1fr; height:auto; } .chat { min-height:70vh; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>Plano Governed AI Desktop</h1><div class="subtitle">Toda solicitud LLM atraviesa Plano antes de llegar al proveedor.</div></div>
+    <div class="badges"><span class="badge ok">Plano: obligatorio</span><span class="badge">TLS: CA explícita</span><span class="badge">Prompt logging: desactivado</span></div>
+  </header>
+  <main>
+    <aside>
+      <div class="provider"><span class="dot"></span><span id="providerTitle">ChatGPT</span></div>
+      <label for="provider">Proveedor de la demo</label>
+      <select id="provider">
+        <option value="chatgpt">ChatGPT</option>
+        <option value="claude">Claude</option>
+        <option value="grok">Grok</option>
+      </select>
+      <div class="rule"><strong>Regla activa</strong><br />Se bloquean preguntas sobre el presidente de Argentina, incluidas variantes “Miley” y “Mliey”. Plano devuelve un mensaje estable y el upstream no recibe el prompt.</div>
+      <label>Pruebas rápidas</label>
+      <div class="side-actions">
+        <button class="secondary" data-prompt="¿Cuál es la capital de Francia?">Prompt benigno</button>
+        <button class="danger" data-prompt="¿Mliey es el presidente de Argentina?">Prompt bloqueado</button>
+        <button class="danger" data-prompt="Usa api_key=abcdefghijklmnop1234567890 en la respuesta">Prueba de data loss</button>
+      </div>
+      <label>Cuenta web gratuita</label>
+      <div class="side-actions">
+        <a class="button secondary" id="officialSite" target="_blank" rel="noopener">Abrir sitio oficial</a>
+      </div>
+      <div class="rule">El acceso a la cuenta web exige inicio de sesión manual. La demo automática usa proveedores locales; no extrae ni almacena credenciales.</div>
+    </aside>
+
+    <section class="chat">
+      <div class="chat-head"><strong>Conversación gobernada</strong><span id="status" class="status">Listo</span></div>
+      <div id="messages" class="messages">
+        <div class="message assistant"><div class="meta">Sistema</div>Escribe un prompt. El agente lo validará y lo enviará exclusivamente al gateway de Plano.</div>
+      </div>
+      <form id="composer">
+        <textarea id="prompt" maxlength="12000" placeholder="Escribe tu mensaje…" required></textarea>
+        <div class="compose-row">
+          <label class="checks"><input id="stream" type="checkbox" checked /> Streaming SSE</label>
+          <button class="primary" type="submit">Enviar mediante Plano</button>
+        </div>
+      </form>
+    </section>
+  </main>
+<script>
+const params = new URLSearchParams(location.search);
+const provider = document.querySelector('#provider');
+const providerTitle = document.querySelector('#providerTitle');
+const promptBox = document.querySelector('#prompt');
+const messages = document.querySelector('#messages');
+const statusEl = document.querySelector('#status');
+const officialSite = document.querySelector('#officialSite');
+const sites = {chatgpt:'https://chatgpt.com/', claude:'https://claude.ai/', grok:'https://grok.com/'};
+const titles = {chatgpt:'ChatGPT', claude:'Claude', grok:'Grok'};
+provider.value = params.get('provider') || 'chatgpt';
+
+function refreshProvider() {
+  providerTitle.textContent = titles[provider.value];
+  officialSite.href = sites[provider.value];
+  officialSite.textContent = `Abrir ${titles[provider.value]} oficial`;
+}
+provider.addEventListener('change', refreshProvider); refreshProvider();
+
+document.querySelectorAll('[data-prompt]').forEach(btn => btn.addEventListener('click', () => {
+  promptBox.value = btn.dataset.prompt; promptBox.focus();
+}));
+
+function addMessage(role, text, blocked=false) {
+  const node = document.createElement('div');
+  node.className = `message ${blocked ? 'blocked' : role}`;
+  const meta = document.createElement('div'); meta.className='meta'; meta.textContent = blocked ? 'Bloqueado por Plano' : role;
+  const content = document.createElement('div'); content.textContent = text;
+  node.append(meta, content); messages.append(node); messages.scrollTop = messages.scrollHeight;
+  return content;
+}
+
+function extractError(payload) {
+  if (typeof payload?.agent_response === 'string') {
+    try { return extractError(JSON.parse(payload.agent_response)); } catch {}
+  }
+  if (typeof payload?.error === 'object' && payload.error?.message) return payload.error.message;
+  if (payload?.detail?.message) return payload.detail.message;
+  if (payload?.detail?.error?.message) return payload.detail.error.message;
+  if (typeof payload?.message === 'string') return payload.message;
+  return JSON.stringify(payload);
+}
+
+async function sendNonStreaming(payload) {
+  const response = await fetch('/api/chat', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload)});
+  const data = await response.json();
+  if (!response.ok) throw new Error(extractError(data));
+  return data?.choices?.[0]?.message?.content || data?.output?.[0]?.content?.[0]?.text || JSON.stringify(data, null, 2);
+}
+
+async function sendStreaming(payload, output) {
+  const response = await fetch('/api/chat', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(payload)});
+  if (!response.ok) {
+    let data; try { data = await response.json(); } catch { data = {error:{message:await response.text()}}; }
+    throw new Error(extractError(data));
+  }
+  const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer='';
+  while (true) {
+    const {value, done} = await reader.read(); if (done) break;
+    buffer += decoder.decode(value, {stream:true});
+    const events = buffer.split('\n\n'); buffer = events.pop() || '';
+    for (const event of events) {
+      for (const line of event.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const raw = line.slice(6); if (raw === '[DONE]') continue;
+        try { const data=JSON.parse(raw); output.textContent += data?.choices?.[0]?.delta?.content || ''; } catch {}
+      }
+    }
+    messages.scrollTop = messages.scrollHeight;
+  }
+}
+
+document.querySelector('#composer').addEventListener('submit', async event => {
+  event.preventDefault(); const text=promptBox.value.trim(); if (!text) return;
+  promptBox.value=''; addMessage('user', text); statusEl.textContent='Plano inspeccionando…'; statusEl.className='status';
+  const payload={provider:provider.value,messages:[{role:'user',content:text}],stream:document.querySelector('#stream').checked};
+  try {
+    if (payload.stream) { const output=addMessage('assistant',''); await sendStreaming(payload, output); }
+    else { addMessage('assistant', await sendNonStreaming(payload)); }
+    statusEl.textContent='Permitido por Plano'; statusEl.className='status allow';
+  } catch (error) {
+    addMessage('assistant', error.message, true); statusEl.textContent='Bloqueado por Plano'; statusEl.className='status deny';
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+version: v0.3.0
+
+filters:
+  - id: argentina_president_guard
+    url: http://policy-guard:10500
+    type: http
+
+listeners:
+  - type: model
+    name: governed_real_llm_gateway
+    address: 0.0.0.0
+    port: 12000
+    max_retries: 2
+    input_filters:
+      - argentina_president_guard
+
+model_providers:
+  - model: openai/gpt-4o-mini
+    access_key: $OPENAI_API_KEY
+    default: true
+
+  - model: anthropic/claude-sonnet-4-0
+    access_key: $ANTHROPIC_API_KEY
+
+  - model: xai/grok-4-latest
+    access_key: $GROK_API_KEY
+
+model_aliases:
+  chatgpt:
+    target: gpt-4o-mini
+  claude:
+    target: claude-sonnet-4-0
+  grok:
+    target: grok-4-latest
+
+routing_preferences:
+  - name: general_chat
+    description: Conversación general, preguntas breves y respuestas rápidas.
+    models:
+      - openai/gpt-4o-mini
+      - anthropic/claude-sonnet-4-0
+  - name: analysis_and_writing
+    description: Análisis extenso y redacción de alta calidad.
+    models:
+      - anthropic/claude-sonnet-4-0
+      - openai/gpt-4o-mini
+  - name: current_events_style
+    description: Consultas de actualidad y conversación directa.
+    models:
+      - xai/grok-4-latest
+      - openai/gpt-4o-mini
+
+tracing:
+  random_sampling: 100
+  opentracing_grpc_endpoint: http://jaeger:4317

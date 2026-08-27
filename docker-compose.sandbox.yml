@@ -1,0 +1,94 @@
+# Solo para entornos anidados sin soporte de bridge/netfilter, como este sandbox.
+# No usar en producción: el docker-compose.yml principal conserva la segmentación.
+services:
+  policy-guard:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+
+  provider-sim:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+
+  provider-web-sim:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    volumes:
+      - ./provider-sim/nginx.host.conf:/etc/nginx/nginx.conf:ro
+      - demo-certs:/certs:ro
+
+  jaeger:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+
+  plano:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    volumes:
+      - ./plano/config.sandbox.yaml:/app/plano_config.yaml:ro
+
+  governed-agent:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      PLANO_BASE_URL: http://127.0.0.1:12000
+      MAX_PROMPT_CHARS: 12000
+
+  proxy-interceptor:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    extra_hosts:
+      - "chatgpt.demo.local:127.0.0.1"
+      - "claude.demo.local:127.0.0.1"
+      - "grok.demo.local:127.0.0.1"
+    environment:
+      PLANO_POLICY_URL: http://127.0.0.1:12000/v1/chat/completions
+      POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
+      MITMWEB_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
+      MAX_INSPECTION_BODY_BYTES: 2097152
+
+  desktop-chatgpt:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      PROVIDER: chatgpt
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://127.0.0.1:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+      START_URL: http://127.0.0.1:10600/?provider=chatgpt
+      VNC_PORT: 5900
+      NOVNC_PORT: 6080
+
+  desktop-claude:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      PROVIDER: claude
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://127.0.0.1:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+      START_URL: http://127.0.0.1:10600/?provider=claude
+      VNC_PORT: 5901
+      NOVNC_PORT: 6081
+
+  desktop-grok:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    environment:
+      PROVIDER: grok
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://127.0.0.1:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+      START_URL: http://127.0.0.1:10600/?provider=grok
+      VNC_PORT: 5902
+      NOVNC_PORT: 6082
