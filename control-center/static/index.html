@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plano Governance Demo · Control Center</title>
+  <style>
+    :root{color-scheme:dark;--bg:#07101f;--panel:#0d1a2f;--panel2:#12233d;--line:#243a5c;--text:#e8eef9;--muted:#9fb0c9;--ok:#38d39f;--bad:#ff7185;--warn:#ffca68;--blue:#6ba8ff}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(circle at 90% 0,#142b50 0,transparent 32%),var(--bg);color:var(--text)}
+    main{max-width:1280px;margin:0 auto;padding:32px 22px 56px} header{display:flex;gap:24px;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:24px}
+    .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.16em;color:var(--blue);font-weight:800}.title{font-size:clamp(28px,4vw,46px);line-height:1.05;margin:7px 0 8px}.subtitle{color:var(--muted);max-width:760px;margin:0;line-height:1.55}.summary{min-width:180px;padding:14px 18px;border:1px solid var(--line);background:rgba(13,26,47,.8);border-radius:14px;text-align:right}.summary strong{font-size:28px;display:block}.summary span{font-size:13px;color:var(--muted)}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:18px 0}.toolbar small{color:var(--muted)} button{border:1px solid #4677b5;background:#173d6d;color:white;padding:10px 16px;border-radius:9px;font-weight:700;cursor:pointer}button:hover{background:#20518e}
+    h2{font-size:18px;margin:30px 0 12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:13px}.card{background:linear-gradient(145deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px;min-height:158px;display:flex;flex-direction:column}.card-head{display:flex;justify-content:space-between;gap:12px}.card h3{font-size:15px;margin:0}.pill{white-space:nowrap;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:800;padding:5px 8px;border-radius:999px}.ok{color:var(--ok);background:#103c35}.bad{color:var(--bad);background:#471f2a}.pending{color:var(--warn);background:#48391c}.meta{display:flex;gap:12px;color:var(--muted);font-size:12px;margin:11px 0}.detail{font-size:13px;color:#bdc9da;line-height:1.45;min-height:38px;word-break:break-word}.link{margin-top:auto;color:#bcd6ff;text-decoration:none;font-size:13px;font-weight:700}.link:hover{text-decoration:underline}.disabled{color:#63758f}
+    .config{display:grid;grid-template-columns:1fr 1fr;gap:16px}.box{border:1px solid var(--line);border-radius:14px;background:rgba(13,26,47,.8);padding:18px}.box h2{margin:0 0 12px}.box p{color:var(--muted);line-height:1.55;font-size:14px}.box code,pre{background:#07111f;color:#d6e6ff;border:1px solid #253d61;border-radius:7px}code{padding:2px 5px}pre{padding:12px;overflow:auto;font-size:12px}.kv{width:100%;border-collapse:collapse;font-size:13px}.kv td{padding:9px 4px;border-bottom:1px solid #1e324f;vertical-align:top}.kv td:first-child{color:var(--muted);width:43%}
+    .notice{border-left:4px solid var(--warn);padding:12px 15px;background:#2b2518;color:#eadbb7;border-radius:5px;font-size:13px;line-height:1.5;margin-top:15px}.footer{margin-top:34px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:20px}@media(max-width:760px){header{display:block}.summary{text-align:left;margin-top:18px}.config{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Gobierno de agentes de IA</div><h1 class="title">Plano Demo Control Center</h1><p class="subtitle">Estado operativo, accesos y puntos de configuración de la arquitectura. Este panel consulta endpoints internos; no necesita ni recibe acceso al socket de Docker.</p></div>
+    <div class="summary"><strong id="score">—</strong><span id="overall">Comprobando servicios</span></div>
+  </header>
+  <div class="toolbar"><small id="checked">Todavía no se realizó una comprobación.</small><button id="refresh">Actualizar estado</button></div>
+  <section id="groups"></section>
+  <section class="config">
+    <article class="box"><h2>Configuración</h2><table class="kv" id="config-table"><tr><td>Estado</td><td>Cargando…</td></tr></table><p>Los valores de puerto y las contraseñas se cambian en <code>.env</code>. La topología de Plano se edita en <code>plano/config.local.yaml</code>; después se recrean los servicios.</p><pre>docker compose up -d --build --force-recreate
+docker compose ps
+docker compose logs -f plano proxy-interceptor</pre></article>
+    <article class="box"><h2>Plano Admin · puerto 19901</h2><p><strong>Envoy Admin no es un editor de configuración.</strong> Es una superficie de diagnóstico generada por Plano. La configuración se realiza en el YAML montado y se aplica recreando el contenedor.</p><table class="kv"><tr><td>Salud</td><td><a class="link" data-port="19901" data-path="/ready">/ready</a></td></tr><tr><td>Listeners</td><td><a class="link" data-port="19901" data-path="/listeners">/listeners</a></td></tr><tr><td>Clusters</td><td><a class="link" data-port="19901" data-path="/clusters">/clusters</a></td></tr><tr><td>Configuración efectiva</td><td><a class="link" data-port="19901" data-path="/config_dump">/config_dump</a></td></tr><tr><td>Métricas</td><td><a class="link" data-port="19901" data-path="/stats/prometheus">/stats/prometheus</a></td></tr></table><div class="notice">Mantenga <code>BIND_ADDRESS=127.0.0.1</code>. Envoy Admin contiene información sensible de la topología y no debe publicarse sin autenticación y controles de red.</div></article>
+  </section>
+  <div class="footer">Plano es el punto de decisión para el tráfico LLM. Los prompts denegados no se envían al proveedor simulado ni a un proveedor real.</div>
+</main>
+<script>
+const labels={governance:'Gobierno y dataplane',clients:'Clientes y escritorios',upstream:'Proveedor de prueba',observability:'Observabilidad'};
+const groups=document.getElementById('groups');
+function localUrl(port,path='/'){const u=new URL(window.location.href);u.port=port;u.pathname=path.split('?')[0]||'/';u.search=path.includes('?')?'?'+path.split('?')[1]:'';u.hash='';return u.toString()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+function render(data){document.getElementById('score').textContent=`${data.healthy}/${data.total}`;document.getElementById('overall').textContent=data.status==='ok'?'Todos saludables':'Atención requerida';document.getElementById('checked').textContent=`Última comprobación: ${new Date(data.checked_at_epoch*1000).toLocaleString()}`;groups.innerHTML='';const grouped={};for(const s of data.services)(grouped[s.group]??=[]).push(s);for(const [g,items] of Object.entries(grouped)){const section=document.createElement('section');section.innerHTML=`<h2>${labels[g]||g}</h2><div class="grid">${items.map(s=>{const href=s.public_port?localUrl(s.public_port,s.public_path):'';return `<article class="card"><div class="card-head"><h3>${esc(s.label)}</h3><span class="pill ${s.healthy?'ok':'bad'}">${s.healthy?'Saludable':'Error'}</span></div><div class="meta"><span>${s.status_code?'HTTP '+s.status_code:'TCP/Proceso'}</span><span>${s.latency_ms} ms</span>${s.public_port?`<span>Puerto ${s.public_port}</span>`:''}</div><div class="detail">${esc(s.detail)}</div>${href?`<a class="link" target="_blank" rel="noopener" href="${href}">Abrir interfaz ↗</a>`:'<span class="link disabled">Solo red interna</span>'}</article>`}).join('')}</div>`;groups.appendChild(section)}}
+async function load(){document.getElementById('overall').textContent='Comprobando servicios';try{const [s,c]=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),fetch('/api/config',{cache:'no-store'}).then(r=>r.json())]);render(s);const rows=[['Dirección de escucha',c.bind_address],['Modo ante fallos',c.policy_fail_mode],['Logging de prompts',c.prompt_body_logging?'ACTIVADO':'desactivado'],['Puertos y contraseñas',c.port_config_file],['Configuración Plano',c.plano_config_file],['Política',c.policy_source]];document.getElementById('config-table').innerHTML=rows.map(([k,v])=>`<tr><td>${esc(k)}</td><td><code>${esc(v)}</code></td></tr>`).join('')}catch(e){document.getElementById('overall').textContent='Panel sin respuesta';document.getElementById('checked').textContent=e.message}}
+document.querySelectorAll('[data-port]').forEach(a=>{a.href=localUrl(a.dataset.port,a.dataset.path);a.target='_blank';a.rel='noopener'});document.getElementById('refresh').addEventListener('click',load);load();setInterval(load,15000);
+</script>
+</body>
+</html>

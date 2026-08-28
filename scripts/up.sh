@@ -3,20 +3,34 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+# shellcheck source=scripts/docker-lib.sh
+source "$ROOT_DIR/scripts/docker-lib.sh"
+init_docker_command
 
 if [[ ! -f .env ]]; then
   cp .env.example .env
   echo "Se creó .env desde .env.example"
 fi
 
-sudo docker compose up --build --detach --remove-orphans
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
+BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
+ACCESS_HOST="$BIND_ADDRESS"
+[[ "$ACCESS_HOST" == "0.0.0.0" ]] && ACCESS_HOST="127.0.0.1"
+
+docker_compose up --build --detach --remove-orphans
 
 for url in \
-  "http://127.0.0.1:${PLANO_PORT:-12000}/v1/models" \
-  "http://127.0.0.1:10600/health" \
-  "http://127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}/vnc.html" \
-  "http://127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}/vnc.html" \
-  "http://127.0.0.1:${GROK_NOVNC_PORT:-6082}/vnc.html"; do
+  "http://${ACCESS_HOST}:${CONTROL_CENTER_PORT:-10000}/health" \
+  "http://${ACCESS_HOST}:${PLANO_PORT:-12000}/healthz" \
+  "http://${ACCESS_HOST}:${PLANO_ADMIN_PORT:-19901}/ready" \
+  "http://${ACCESS_HOST}:${GOVERNED_AGENT_PORT:-10600}/health" \
+  "http://${ACCESS_HOST}:${CHATGPT_NOVNC_PORT:-6080}/vnc.html" \
+  "http://${ACCESS_HOST}:${CLAUDE_NOVNC_PORT:-6081}/vnc.html" \
+  "http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html"; do
   ready=0
   for _ in $(seq 1 90); do
     if curl -fsS "$url" >/dev/null 2>&1; then ready=1; break; fi
@@ -24,7 +38,7 @@ for url in \
   done
   if [[ "$ready" -ne 1 ]]; then
     echo "Servicio no disponible: $url" >&2
-    sudo docker compose ps
+    docker_compose ps
     exit 1
   fi
 done
@@ -32,13 +46,23 @@ done
 cat <<EOF
 
 Demo operativa:
-  ChatGPT noVNC: http://127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}/vnc.html?autoconnect=1&resize=remote
-  Claude noVNC:  http://127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}/vnc.html?autoconnect=1&resize=remote
-  Grok noVNC:    http://127.0.0.1:${GROK_NOVNC_PORT:-6082}/vnc.html?autoconnect=1&resize=remote
-  Jaeger:        http://127.0.0.1:${JAEGER_UI_PORT:-16686}
-  mitmweb:       http://127.0.0.1:${MITMPROXY_UI_PORT:-8081}
-  Plano API:     http://127.0.0.1:${PLANO_PORT:-12000}
+  Control Center: http://${ACCESS_HOST}:${CONTROL_CENTER_PORT:-10000}/
+  ChatGPT noVNC: http://${ACCESS_HOST}:${CHATGPT_NOVNC_PORT:-6080}/vnc.html?autoconnect=1&resize=remote
+  Claude noVNC:  http://${ACCESS_HOST}:${CLAUDE_NOVNC_PORT:-6081}/vnc.html?autoconnect=1&resize=remote
+  Grok noVNC:    http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html?autoconnect=1&resize=remote
+  Jaeger:        http://${ACCESS_HOST}:${JAEGER_UI_PORT:-16686}
+  mitmweb:       http://${ACCESS_HOST}:${MITMPROXY_UI_PORT:-8081}
+  Plano API:     http://${ACCESS_HOST}:${PLANO_PORT:-12000}
+  Plano Admin:   http://${ACCESS_HOST}:${PLANO_ADMIN_PORT:-19901}/
 
-Contraseña VNC/mitmweb: ${VNC_PASSWORD:-plano-demo}
-Ejecute: ./scripts/smoke-test.sh
+Contraseña noVNC:   ${VNC_PASSWORD:-plano-demo}
+Contraseña mitmweb: ${MITMWEB_PASSWORD:-plano-demo}
+
+Configuración:
+  Puertos/contraseñas: .env
+  Plano:                plano/config.local.yaml
+  Política:             policy-guard/app.py
+
+Ejecute: ./scripts/diagnose.sh
+Pruebas: ./scripts/smoke-test.sh
 EOF

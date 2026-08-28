@@ -1,4 +1,4 @@
-# Informe de validación de la demo
+# Informe de validación de la corrección operativa
 
 **Fecha:** 27 de agosto de 2026  
 **Resultado general:** aprobado
@@ -6,28 +6,50 @@
 | Área | Resultado | Evidencia |
 |---|---:|---|
 | Tests unitarios del filtro | 10/10 PASS | `python3 -m pytest -q policy-guard/test_policy.py` |
-| Suite end-to-end | 16/16 PASS | `artifacts/smoke-test-final.txt` |
-| ChatGPT local gobernado | PASS | Respuesta permitida y routing a `custom/local-chatgpt` |
-| Claude local gobernado | PASS | Respuesta permitida y routing a `custom/local-claude` |
-| Grok local gobernado | PASS | Respuesta permitida y routing a `custom/local-grok` |
-| Bloqueo Milei/Miley/Mliey | PASS | HTTP 403, texto estable y cero llamadas upstream |
-| Contexto multivuelta | PASS | Se bloqueó al combinar `Argentina` y `presidente` entre turnos |
-| Prevención de fuga | PASS | Se bloqueó un patrón `api_key=...` |
+| Suite end-to-end ampliada | 23/23 PASS | `artifacts/smoke-test-ports-fix.txt` |
+| Validación declarativa de puertos | PASS | `scripts/validate_compose.py` |
+| PortBindings creados por Docker | PASS | `artifacts/normal-compose-port-bindings.txt` |
+| Control Center | 11/11 saludables | `artifacts/control-center-status.json` |
+| ChatGPT noVNC | PASS | Host `6080` → contenedor `6080` |
+| Claude noVNC | PASS | Host `6081` → contenedor `6080` |
+| Grok noVNC | PASS | Host `6082` → contenedor `6080` |
+| Plano Gateway | PASS | Host `12000` → contenedor `12000`; `/healthz` responde 200 |
+| Plano Agent Listener | PASS | Host `8001` → contenedor `8001` |
+| Plano/Envoy Admin | PASS | Host `19901` → contenedor `9901`; `/ready` responde `LIVE` |
+| mitmweb | PASS | Host `8081` → contenedor `8081`; login validado con `MITMWEB_PASSWORD` |
+| Política Milei/Miley/Mliey | PASS | HTTP 403, texto estable y cero llamadas upstream |
+| Prevención de fuga | PASS | Patrón de API key bloqueado |
 | Streaming | PASS | Chunks SSE y `[DONE]` preservados |
-| MITM TLS controlado | PASS | Solicitud permitida y denegada a `chatgpt.demo.local` mediante CA confiada |
-| Confianza del cliente | PASS | CA presente en trust store del sistema y NSS/Chromium |
-| Observabilidad | PASS | Jaeger registró `plano(filter)`, `plano(llm)`, `plano(outbound)` y `plano(routing)` |
-| noVNC | PASS | Puertos 6080, 6081 y 6082 saludables |
-| UI de bloqueo | PASS | `artifacts/ui-blocked-final.png` muestra el mensaje exacto |
+| MITM TLS controlado | PASS | Solicitud permitida y denegada con CA confiada |
 
-## Estado operativo
+## Causa raíz corregida
 
-La pila permanece levantada en este sandbox mediante `docker-compose.sandbox.yml`, necesario porque el kernel de ejecución no soporta bridge/netfilter anidado. Todos los servicios de larga duración están en estado `Up`; `cert-init` terminó correctamente con código 0.
+El Compose principal publicaba los puertos, pero el archivo `docker-compose.sandbox.yml` podía combinarse accidentalmente. Ese override usaba `network_mode: host` y eliminaba todos los mapeos mediante `ports: !reset []`. Se movió a `dev/docker-compose.sandbox-internal.yml` y se marcó como no apto para estaciones de trabajo o Docker Desktop.
 
-El despliegue recomendado para un host Docker normal usa únicamente `docker-compose.yml`, que conserva las redes internas `control` y `upstream-sim` y la red `egress` restringida al proxy y a Plano.
+## Verificaciones realizadas
 
-## Capturas principales
+Docker materializó los siguientes bindings en una pila normal creada específicamente para la prueba:
 
-- `artifacts/desktop-clean-final.png`: escritorio noVNC con la interfaz ChatGPT gobernada.
-- `artifacts/ui-blocked-final.png`: prompt `¿Mliey es el presidente de Argentina?` bloqueado por Plano.
-- `artifacts/runtime-evidence.txt`: CA, decisiones anonimizadas, servicios Jaeger y estado de contenedores.
+```text
+desktop-chatgpt  127.0.0.1:6080 -> 6080/tcp
+desktop-claude   127.0.0.1:6081 -> 6080/tcp
+desktop-grok     127.0.0.1:6082 -> 6080/tcp
+plano             127.0.0.1:12000 -> 12000/tcp
+plano             127.0.0.1:8001 -> 8001/tcp
+plano             127.0.0.1:19901 -> 9901/tcp
+proxy-interceptor 127.0.0.1:8081 -> 8081/tcp
+control-center    127.0.0.1:10000 -> 10000/tcp
+```
+
+La ejecución funcional dentro del sandbox requirió el override interno debido a las limitaciones de bridge/netfilter anidado del kernel. Esa ejecución equivalente completó 23 pruebas y el Control Center informó 11 de 11 componentes saludables.
+
+## Operación recomendada
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+./scripts/diagnose.sh
+./scripts/smoke-test.sh
+```
+
+No se debe añadir `-f dev/docker-compose.sandbox-internal.yml` en la máquina del usuario.

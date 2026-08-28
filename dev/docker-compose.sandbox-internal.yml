@@ -1,6 +1,21 @@
 # Solo para entornos anidados sin soporte de bridge/netfilter, como este sandbox.
 # No usar en producción: el docker-compose.yml principal conserva la segmentación.
+# La variable obligatoria evita que este archivo se use por accidente en Docker Desktop.
+x-internal-sandbox-guard: ${ALLOW_INTERNAL_SANDBOX_OVERRIDE:?NO use este override en su maquina; ejecute solo docker compose up -d --build}
+
 services:
+  control-center:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    command: ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "11080", "--no-access-log"]
+    environment:
+      CONTROL_CENTER_TARGET_MODE: host
+      CONTROL_CENTER_PORT: 11080
+      PLANO_ADMIN_PORT: 9901
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:11080/health', timeout=2)"]
+
   policy-guard:
     network_mode: host
     networks: !reset []
@@ -50,7 +65,7 @@ services:
     environment:
       PLANO_POLICY_URL: http://127.0.0.1:12000/v1/chat/completions
       POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
-      MITMWEB_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      MITMWEB_PASSWORD: ${MITMWEB_PASSWORD:-plano-demo}
       GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
       MAX_INSPECTION_BODY_BYTES: 2097152
 

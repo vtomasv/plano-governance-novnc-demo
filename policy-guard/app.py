@@ -269,6 +269,18 @@ async def guard(path: str, request: Request):
     )
 
 
+@app.get("/")
+async def index() -> dict[str, Any]:
+    return {
+        "service": "policy-guard",
+        "purpose": "Filtro de entrada de Plano para gobierno y prevención de fuga de datos",
+        "health": "/health",
+        "decisions": "/decisions",
+        "metrics": "/metrics",
+        "configuration": "Editar policy-guard/app.py y recrear el servicio",
+    }
+
+
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "healthy", "service": "policy-guard"}

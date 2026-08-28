@@ -1,0 +1,12 @@
+--- desktop-chatgpt ---
+{"6080/tcp":[{"HostIp":"127.0.0.1","HostPort":"6080"}]}
+--- desktop-claude ---
+{"6080/tcp":[{"HostIp":"127.0.0.1","HostPort":"6081"}]}
+--- desktop-grok ---
+{"6080/tcp":[{"HostIp":"127.0.0.1","HostPort":"6082"}]}
+--- plano ---
+{"12000/tcp":[{"HostIp":"127.0.0.1","HostPort":"12000"}],"8001/tcp":[{"HostIp":"127.0.0.1","HostPort":"8001"}],"9901/tcp":[{"HostIp":"127.0.0.1","HostPort":"19901"}]}
+--- proxy-interceptor ---
+{"8081/tcp":[{"HostIp":"127.0.0.1","HostPort":"8081"}]}
+--- control-center ---
+{"10000/tcp":[{"HostIp":"127.0.0.1","HostPort":"10000"}]}

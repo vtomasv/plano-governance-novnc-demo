@@ -161,6 +161,18 @@ async def anthropic_messages(request: Request):
     }
 
 
+@app.get("/")
+async def index():
+    return {
+        "service": "provider-sim",
+        "purpose": "Upstream OpenAI/Anthropic-compatible para pruebas sin credenciales",
+        "health": "/health",
+        "calls": "/calls",
+        "reset": "POST /reset",
+        "configuration": "Este servicio es determinista; los proveedores reales se habilitan con docker-compose.real-api.yml",
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "provider-sim"}

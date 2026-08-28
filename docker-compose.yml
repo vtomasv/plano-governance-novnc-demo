@@ -48,24 +48,48 @@ services:
     network_mode: none
     restart: "no"
 
+  control-center:
+    <<: *python-service
+    hostname: control-center
+    build:
+      context: ./control-center
+    environment:
+      BIND_ADDRESS: ${BIND_ADDRESS:-127.0.0.1}
+      POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
+      LOG_PROMPT_BODIES: ${LOG_PROMPT_BODIES:-false}
+      CHATGPT_NOVNC_PORT: ${CHATGPT_NOVNC_PORT:-6080}
+      CLAUDE_NOVNC_PORT: ${CLAUDE_NOVNC_PORT:-6081}
+      GROK_NOVNC_PORT: ${GROK_NOVNC_PORT:-6082}
+      PLANO_PORT: ${PLANO_PORT:-12000}
+      PLANO_ADMIN_PORT: ${PLANO_ADMIN_PORT:-19901}
+      POLICY_GUARD_PORT: ${POLICY_GUARD_PORT:-10500}
+      PROVIDER_SIM_PORT: ${PROVIDER_SIM_PORT:-10501}
+      GOVERNED_AGENT_PORT: ${GOVERNED_AGENT_PORT:-10600}
+      JAEGER_UI_PORT: ${JAEGER_UI_PORT:-16686}
+      MITMPROXY_UI_PORT: ${MITMPROXY_UI_PORT:-8081}
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${CONTROL_CENTER_PORT:-10000}:10000"
+
   policy-guard:
     <<: *python-service
+    hostname: policy-guard
     build:
       context: ./policy-guard
     environment:
       LOG_PROMPT_BODIES: ${LOG_PROMPT_BODIES:-false}
     ports:
-      - "127.0.0.1:10500:10500"
+      - "${BIND_ADDRESS:-127.0.0.1}:${POLICY_GUARD_PORT:-10500}:10500"
 
   provider-sim:
     <<: *python-service
+    hostname: provider-sim
     build:
       context: ./provider-sim
     networks:
       - control
       - upstream-sim
     ports:
-      - "127.0.0.1:10501:10501"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PROVIDER_SIM_PORT:-10501}:10501"
 
   provider-web-sim:
     image: nginx:1.28.0-alpine
@@ -79,7 +103,7 @@ services:
       - ./provider-sim/nginx.conf:/etc/nginx/nginx.conf:ro
       - demo-certs:/certs:ro
     ports:
-      - "127.0.0.1:18443:8443"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PROVIDER_TLS_PORT:-18443}:8443"
     networks:
       upstream-sim:
         aliases:
@@ -93,6 +117,12 @@ services:
       - /var/cache/nginx:size=16m
       - /var/run:size=4m
       - /tmp:size=16m
+    healthcheck:
+      test: ["CMD", "curl", "-fk", "https://127.0.0.1:8443/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
 
   jaeger:
     image: jaegertracing/all-in-one:1.68.0
@@ -100,13 +130,19 @@ services:
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
-      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
-      - "127.0.0.1:4317:4317"
-      - "127.0.0.1:4318:4318"
+      - "${BIND_ADDRESS:-127.0.0.1}:${JAEGER_UI_PORT:-16686}:16686"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_GRPC_PORT:-4317}:4317"
+      - "${BIND_ADDRESS:-127.0.0.1}:${OTLP_HTTP_PORT:-4318}:4318"
     networks:
       - control
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:16686/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
 
   plano:
     image: plano-governance-demo/plano:0.4.36
@@ -123,14 +159,20 @@ services:
     volumes:
       - ./plano/config.local.yaml:/app/plano_config.yaml:ro
     ports:
-      - "127.0.0.1:${PLANO_PORT:-12000}:12000"
-      - "127.0.0.1:8001:8001"
-      - "127.0.0.1:19901:9901"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PLANO_PORT:-12000}:12000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PLANO_AGENT_PORT:-8001}:8001"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PLANO_ADMIN_PORT:-19901}:9901"
     networks:
       - control
       - egress
     security_opt:
       - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:12000/healthz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 15s
 
   governed-agent:
     <<: *python-service
@@ -139,12 +181,12 @@ services:
     restart: unless-stopped
     depends_on:
       plano:
-        condition: service_started
+        condition: service_healthy
     environment:
       PLANO_BASE_URL: http://plano:12000
       MAX_PROMPT_CHARS: 12000
     ports:
-      - "127.0.0.1:10600:10600"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GOVERNED_AGENT_PORT:-10600}:10600"
 
   proxy-interceptor:
     build:
@@ -154,17 +196,17 @@ services:
       cert-init:
         condition: service_completed_successfully
       plano:
-        condition: service_started
+        condition: service_healthy
     environment:
       PLANO_POLICY_URL: http://plano:12000/v1/chat/completions
       POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
-      MITMWEB_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      MITMWEB_PASSWORD: ${MITMWEB_PASSWORD:-plano-demo}
       GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
       MAX_INSPECTION_BODY_BYTES: 2097152
     volumes:
       - demo-certs:/certs:ro
     ports:
-      - "127.0.0.1:${MITMPROXY_UI_PORT:-8081}:8081"
+      - "${BIND_ADDRESS:-127.0.0.1}:${MITMPROXY_UI_PORT:-8081}:8081"
     networks:
       - control
       - upstream-sim
@@ -174,6 +216,7 @@ services:
 
   desktop-chatgpt:
     <<: *desktop
+    hostname: desktop-chatgpt
     environment:
       PROVIDER: chatgpt
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -183,10 +226,11 @@ services:
       - demo-certs:/certs:ro
       - chatgpt-profile:/home/demo/.config/chromium
     ports:
-      - "127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}:6080"
+      - "${BIND_ADDRESS:-127.0.0.1}:${CHATGPT_NOVNC_PORT:-6080}:6080"
 
   desktop-claude:
     <<: *desktop
+    hostname: desktop-claude
     environment:
       PROVIDER: claude
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -196,10 +240,11 @@ services:
       - demo-certs:/certs:ro
       - claude-profile:/home/demo/.config/chromium
     ports:
-      - "127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}:6080"
+      - "${BIND_ADDRESS:-127.0.0.1}:${CLAUDE_NOVNC_PORT:-6081}:6080"
 
   desktop-grok:
     <<: *desktop
+    hostname: desktop-grok
     environment:
       PROVIDER: grok
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -209,7 +254,7 @@ services:
       - demo-certs:/certs:ro
       - grok-profile:/home/demo/.config/chromium
     ports:
-      - "127.0.0.1:${GROK_NOVNC_PORT:-6082}:6080"
+      - "${BIND_ADDRESS:-127.0.0.1}:${GROK_NOVNC_PORT:-6082}:6080"
 
 networks:
   control:

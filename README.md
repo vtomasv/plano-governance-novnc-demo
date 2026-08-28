@@ -100,13 +100,19 @@ Los accesos predeterminados son:
 
 | Componente | URL | Credencial de laboratorio |
 |---|---|---|
-| ChatGPT noVNC | `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote` | `plano-demo` |
-| Claude noVNC | `http://127.0.0.1:6081/vnc.html?autoconnect=1&resize=remote` | `plano-demo` |
-| Grok noVNC | `http://127.0.0.1:6082/vnc.html?autoconnect=1&resize=remote` | `plano-demo` |
+| **Control Center** | `http://127.0.0.1:10000` | No aplica |
+| ChatGPT noVNC | `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
+| Claude noVNC | `http://127.0.0.1:6081/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
+| Grok noVNC | `http://127.0.0.1:6082/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
 | Plano API | `http://127.0.0.1:12000` | Sin clave en modo local |
-| Jaeger | `http://127.0.0.1:16686` | No aplica |
-| mitmweb | `http://127.0.0.1:8081` | `plano-demo` |
+| Plano/Envoy Admin | `http://127.0.0.1:19901` | Solo loopback |
+| Policy Guard | `http://127.0.0.1:10500` | No aplica |
+| Provider Sim | `http://127.0.0.1:10501` | No aplica |
 | Interfaz directa del agente | `http://127.0.0.1:10600` | No aplica |
+| Jaeger | `http://127.0.0.1:16686` | No aplica |
+| mitmweb | `http://127.0.0.1:8081` | `MITMWEB_PASSWORD` en `.env` |
+
+De forma predeterminada, tanto `VNC_PASSWORD` como `MITMWEB_PASSWORD` valen **`plano-demo`**. Para cambiar mitmweb, edite `.env` y ejecute `docker compose up -d --force-recreate proxy-interceptor`.
 
 Para detener conservando perfiles y CA:
 
@@ -120,18 +126,19 @@ Para eliminar también perfiles, cookies de laboratorio, CA y volúmenes:
 make purge
 ```
 
-### Override de validación del sandbox
+### Verificación operativa y puertos
 
-El kernel de este entorno de ejecución no ofrece las tablas de netfilter necesarias para redes bridge anidadas. Solo para esta validación se utilizó:
+Después del arranque, abra **Control Center** en `http://127.0.0.1:10000` o ejecute:
 
 ```bash
-docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.sandbox.yml \
-  up -d --build
+make diagnose
 ```
 
-Ese override usa `network_mode: host`; **no debe usarse en producción**. El Compose principal conserva la segmentación segura y es el que debe usarse en un host Docker normal.
+El diagnóstico muestra el estado de contenedores, los mapeos efectivos, la respuesta HTTP de cada interfaz y las credenciales configuradas localmente. Los puertos se cambian en `.env`; `BIND_ADDRESS=127.0.0.1` evita publicar superficies sensibles en la red.
+
+> No use `dev/docker-compose.sandbox-internal.yml` en su estación. Es un workaround interno para kernels sin bridge/netfilter anidado y elimina deliberadamente la sección `ports`.
+
+La guía detallada de operación y solución de problemas está en [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 ## 5. Configuración de Plano
 
@@ -146,6 +153,8 @@ La configuración local está en [`plano/config.local.yaml`](plano/config.local.
 | Alias | `chatgpt-demo`, `claude-demo`, `grok-demo`, `governed-default` |
 | Preferencias | chat general, análisis/redacción y estilo de actualidad |
 | Trazas | Muestreo 100 %, OTLP/gRPC hacia Jaeger |
+
+`http://127.0.0.1:19901/` es **Envoy Admin**: permite inspeccionar `/ready`, `/listeners`, `/clusters`, `/config_dump` y `/stats/prometheus`, pero no edita Plano. Para cambiar listeners, filtros, proveedores, alias o routing, modifique `plano/config.local.yaml` y recree `plano`.
 
 El filtro se conecta así:
 
@@ -224,7 +233,7 @@ Ejecute:
 ./scripts/smoke-test.sh
 ```
 
-La validación final obtuvo **16 PASS y 0 FAIL**. Cubrió los tres modelos locales, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-final.txt`](artifacts/smoke-test-final.txt).
+La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-ports-fix.txt`](artifacts/smoke-test-ports-fix.txt).
 
 Para comprobar que el proveedor no fue llamado:
 
@@ -258,14 +267,19 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 .
 ├── docker-compose.yml
 ├── docker-compose.real-api.yml
-├── docker-compose.sandbox.yml
 ├── .env.example
 ├── Makefile
 ├── scripts/
+│   ├── compose.sh
+│   ├── diagnose.sh
+│   ├── docker-lib.sh
 │   ├── generate-ca.sh
 │   ├── smoke-test.sh
 │   ├── up.sh
+│   ├── validate.sh
+│   ├── validate_compose.py
 │   └── down.sh
+├── control-center/
 ├── plano/
 │   ├── Dockerfile
 │   ├── config.local.yaml
@@ -276,6 +290,8 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 ├── governed-agent/
 ├── proxy-interceptor/
 ├── desktop/
+├── docs/
+├── dev/                         # solo entorno interno; no usar para despliegue
 └── artifacts/
 ```
 

@@ -1,4 +1,4 @@
-.PHONY: up down purge test logs status certs validate
+.PHONY: up down purge test logs status diagnose certs validate
 
 up:
 	./scripts/up.sh
@@ -13,17 +13,16 @@ test:
 	./scripts/smoke-test.sh
 
 logs:
-	sudo docker compose logs --tail=200 --follow plano policy-guard proxy-interceptor governed-agent
+	./scripts/compose.sh logs --tail=200 --follow plano policy-guard proxy-interceptor governed-agent
 
 status:
-	sudo docker compose ps
+	./scripts/compose.sh ps
+
+diagnose:
+	./scripts/diagnose.sh
 
 certs:
 	./scripts/generate-ca.sh ./certs
 
 validate:
-	sudo docker compose config >/dev/null
-	python3 -m pytest -q policy-guard/test_policy.py
-	python3 -m py_compile policy-guard/app.py provider-sim/app.py governed-agent/app.py proxy-interceptor/governance.py
-	node --check desktop/extension/background.js
-	node --check desktop/extension/content.js
+	./scripts/validate.sh

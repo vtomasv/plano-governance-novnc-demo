@@ -1,6 +1,13 @@
+PASS  Control Center disponible
+PASS  ChatGPT noVNC :6080 disponible
+PASS  Claude noVNC :6081 disponible
+PASS  Grok noVNC :6082 disponible
 PASS  policy-guard disponible
 PASS  provider-sim disponible
-PASS  Plano disponible
+PASS  Plano Gateway disponible
+PASS  Plano Admin disponible
+PASS  Control Center inventaría escritorios y Plano Admin
+PASS  autenticación mitmweb con MITMWEB_PASSWORD
 PASS  permitido custom/local-chatgpt
 PASS  permitido custom/local-claude
 PASS  permitido custom/local-grok
@@ -15,4 +22,4 @@ PASS  TLS interceptado permitido
 PASS  TLS interceptado bloqueado
 PASS  el bloqueo TLS no alcanzó el upstream
 
-Resultado: 16 PASS, 0 FAIL
+Resultado: 23 PASS, 0 FAIL
