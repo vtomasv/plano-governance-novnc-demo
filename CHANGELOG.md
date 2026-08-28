@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.1 — 2026-08-27
+
+Esta revisión corrige el caso observado en Docker Desktop donde los contenedores aparecían activos pero solo Plano conservaba puertos publicados.
+
+| Cambio | Resultado |
+|---|---|
+| Compose efectivo | Los scripts fuerzan la ruta absoluta de `docker-compose.yml` e ignoran `COMPOSE_FILE` heredado |
+| Recreación | El arranque utiliza `--force-recreate`; no reutiliza contenedores creados sin bindings |
+| Fail-fast | `check-runtime-ports.sh` valida `HostConfig.PortBindings` para todas las superficies |
+| Docker Desktop | Nuevos `up.ps1`, `down.ps1` y `diagnose.ps1` nativos de PowerShell |
+| Origen | El diagnóstico muestra proyecto, directorio y archivos Compose registrados en las etiquetas Docker |
+| Cobertura | Se prueba un estado contaminado con `PortBindings={}` y su recuperación completa |
+| Bindings adicionales | También se verifican `18443`, `4317` y `4318` |
+
 ## 1.1.0 — 2026-08-27
 
 Esta versión corrige la experiencia de despliegue y diagnóstico en estaciones de trabajo.

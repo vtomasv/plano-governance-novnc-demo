@@ -8,12 +8,17 @@ El síntoma descrito —Plano visible en `12000/8001/19901`, mitmweb visible en 
 
 ## Causa raíz
 
-`dev/docker-compose.sandbox-internal.yml` era un workaround exclusivo del sandbox de desarrollo, cuyo kernel no permite crear bridges/netfilter anidados. No es un archivo de despliegue para una estación de trabajo. Su presencia junto al Compose principal facilitaba que se usara accidentalmente.
+Docker había creado la mayoría de los contenedores con `HostConfig.PortBindings={}`. Un contenedor conserva esa configuración cuando se pulsa **Start**; los bindings solo aparecen al recrearlo con una configuración que contenga `ports`.
 
-## Correcciones previstas
+Se reprodujo el mismo patrón mediante un `COMPOSE_FILE` externo que fusionó un override y eliminó los puertos. Otros desencadenantes equivalentes son `docker compose run`, el botón **Run** sobre una imagen o una pila obsoleta. `dev/docker-compose.sandbox-internal.yml` sigue siendo un workaround exclusivo del sandbox y no es un archivo de despliegue.
 
-1. El despliegue soportado usa solo `docker compose up -d --build` y tiene mapeos explícitos y configurables.
+## Correcciones aplicadas
+
+1. El despliegue soportado usa `scripts/up.sh` o `scripts/up.ps1`; ambos fuerzan el Compose principal y tienen mapeos explícitos y configurables.
 2. El override interno se movió a `dev/` y está marcado como no soportado para Docker Desktop.
 3. Se añadió Control Center en `http://127.0.0.1:10000` con salud, enlaces y configuración operativa segura.
 4. La contraseña de mitmweb es `MITMWEB_PASSWORD`, independiente de `VNC_PASSWORD`, y se muestra al finalizar el arranque.
 5. Plano tiene healthcheck contra `/healthz`; Envoy Admin en `19901` queda documentado como diagnóstico, no como editor de configuración.
+6. Los wrappers fuerzan la ruta absoluta del Compose principal, ignoran `COMPOSE_FILE` y fijan el nombre de proyecto.
+7. El arranque usa `--force-recreate` y valida `HostConfig.PortBindings` antes de informar éxito.
+8. Docker Desktop dispone de scripts PowerShell nativos para iniciar, detener y diagnosticar.

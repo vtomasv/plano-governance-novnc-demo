@@ -21,7 +21,13 @@ BIND_ADDRESS="${BIND_ADDRESS:-127.0.0.1}"
 ACCESS_HOST="$BIND_ADDRESS"
 [[ "$ACCESS_HOST" == "0.0.0.0" ]] && ACCESS_HOST="127.0.0.1"
 
-docker_compose up --build --detach --remove-orphans
+if [[ -n "${COMPOSE_FILE:-}" ]]; then
+  echo "Aviso: COMPOSE_FILE está definido, pero será ignorado; se usará exclusivamente $PLANO_COMPOSE_FILE"
+fi
+
+docker_compose config --quiet
+docker_compose up --build --detach --remove-orphans --force-recreate
+"$ROOT_DIR/scripts/check-runtime-ports.sh"
 
 for url in \
   "http://${ACCESS_HOST}:${CONTROL_CENTER_PORT:-10000}/health" \

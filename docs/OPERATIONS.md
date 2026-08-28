@@ -2,15 +2,26 @@
 
 ## Superficies publicadas
 
-El despliegue soportado se inicia únicamente con:
+El despliegue soportado se inicia mediante los scripts que fijan explícitamente el Compose principal.
+
+En Linux o macOS:
 
 ```bash
-cp .env.example .env
-docker compose up -d --build
+cp -n .env.example .env
+./scripts/up.sh
 ./scripts/diagnose.sh
 ```
 
-No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
+En Windows/Docker Desktop, desde PowerShell:
+
+```powershell
+git pull
+.\scripts\down.ps1
+.\scripts\up.ps1
+.\scripts\diagnose.ps1
+```
+
+Estos comandos usan `--force-recreate`, comprueban `HostConfig.PortBindings` y abortan si Docker omite un puerto. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
 
 | Puerto predeterminado | Servicio | Uso |
 |---:|---|---|
@@ -86,30 +97,44 @@ La contraseña noVNC es independiente y está en `VNC_PASSWORD`. `./scripts/up.s
 
 ## Diagnóstico rápido de puertos ausentes
 
-Primero confirme que está usando solo el Compose principal:
+El patrón donde solo Plano muestra puertos significa que esos contenedores fueron **creados** sin `PortBindings`. Pulsar Start en Docker Desktop mantiene la configuración original: es necesario recrearlos.
+
+La causa puede ser un `COMPOSE_FILE` heredado, un override externo, `docker compose run`, el botón Run sobre una imagen o contenedores obsoletos. Los scripts nuevos neutralizan `COMPOSE_FILE` mediante `-f /ruta/absoluta/docker-compose.yml` y muestran la etiqueta `com.docker.compose.project.config_files` registrada por Docker.
+
+En Bash:
 
 ```bash
-docker compose config --services
-docker compose config | grep -A5 -E 'desktop-(chatgpt|claude|grok):'
-```
-
-Después ejecute:
-
-```bash
-docker compose ps -a
-docker compose port desktop-chatgpt 6080
-docker compose port desktop-claude 6080
-docker compose port desktop-grok 6080
+./scripts/check-runtime-ports.sh
 ./scripts/diagnose.sh
 ```
 
-Los resultados esperados de `docker compose port` terminan respectivamente en `6080`, `6081` y `6082`. Si el mapeo existe pero la URL no responde, revise:
+En PowerShell:
+
+```powershell
+.\scripts\diagnose.ps1
+```
+
+Para recuperar la pila en Docker Desktop:
+
+```powershell
+.\scripts\down.ps1
+.\scripts\up.ps1
+```
+
+Para recuperar en Linux o macOS:
 
 ```bash
-docker compose logs --tail=200 desktop-chatgpt
-docker compose logs --tail=200 desktop-claude
-docker compose logs --tail=200 desktop-grok
-docker compose up -d --build --force-recreate
+./scripts/compose.sh down --remove-orphans
+./scripts/up.sh
+```
+
+Los resultados esperados terminan respectivamente en `6080`, `6081` y `6082`; además deben aparecer `10000`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901` y `8081`. Si el mapeo existe pero la URL no responde, revise:
+
+```bash
+./scripts/compose.sh logs --tail=200 desktop-chatgpt
+./scripts/compose.sh logs --tail=200 desktop-claude
+./scripts/compose.sh logs --tail=200 desktop-grok
+./scripts/up.sh
 ```
 
 En Docker Desktop, confirme que el motor esté en modo **Linux containers** y que ningún proceso local esté usando esos puertos. Puede cambiar cualquier puerto del host en `.env` sin modificar el puerto interno `6080` de cada contenedor.

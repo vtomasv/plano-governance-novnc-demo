@@ -14,9 +14,15 @@ if [[ -f .env ]]; then
   set +a
 fi
 
-"${DOCKER[@]}" compose config >/dev/null
-"${DOCKER[@]}" compose config --format json > /tmp/plano-governance-compose.json
+docker_compose config >/dev/null
+docker_compose config --format json > /tmp/plano-governance-compose.json
 python3 scripts/validate_compose.py /tmp/plano-governance-compose.json
+
+# Regresión: un COMPOSE_FILE heredado no debe alterar el archivo forzado por docker-lib.sh.
+COMPOSE_FILE="$ROOT_DIR/dev/docker-compose.sandbox-internal.yml" \
+  docker_compose config --format json > /tmp/plano-governance-compose-isolated.json
+python3 scripts/validate_compose.py /tmp/plano-governance-compose-isolated.json
+
 python3 -m pytest -q policy-guard/test_policy.py
 python3 -m py_compile \
   policy-guard/app.py \

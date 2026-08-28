@@ -6,10 +6,10 @@
 | Área | Resultado | Evidencia |
 |---|---:|---|
 | Tests unitarios del filtro | 10/10 PASS | `python3 -m pytest -q policy-guard/test_policy.py` |
-| Suite end-to-end ampliada | 23/23 PASS | `artifacts/smoke-test-ports-fix.txt` |
+| Suite end-to-end ampliada | 23/23 PASS | `artifacts/smoke-test-bindings-fix.txt` |
 | Validación declarativa de puertos | PASS | `scripts/validate_compose.py` |
-| PortBindings creados por Docker | PASS | `artifacts/normal-compose-port-bindings.txt` |
-| Control Center | 11/11 saludables | `artifacts/control-center-status.json` |
+| PortBindings creados por Docker | PASS | `artifacts/runtime-port-regression.txt` |
+| Control Center | 11/11 saludables | Validado por `artifacts/smoke-test-bindings-fix.txt` |
 | ChatGPT noVNC | PASS | Host `6080` → contenedor `6080` |
 | Claude noVNC | PASS | Host `6081` → contenedor `6080` |
 | Grok noVNC | PASS | Host `6082` → contenedor `6080` |
@@ -46,8 +46,8 @@ La ejecución funcional dentro del sandbox requirió el override interno debido 
 ## Operación recomendada
 
 ```bash
-cp .env.example .env
-docker compose up -d --build
+cp -n .env.example .env
+./scripts/up.sh
 ./scripts/diagnose.sh
 ./scripts/smoke-test.sh
 ```

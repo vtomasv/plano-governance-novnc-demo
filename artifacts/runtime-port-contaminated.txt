@@ -1,0 +1,27 @@
+ERROR control-center:10000     esperado host :10000; compose-port=<vacío>; PortBindings={}
+ERROR desktop-chatgpt:6080     esperado host :6080; compose-port=<vacío>; PortBindings={}
+ERROR desktop-claude:6080      esperado host :6081; compose-port=<vacío>; PortBindings={}
+ERROR desktop-grok:6080        esperado host :6082; compose-port=<vacío>; PortBindings={}
+OK    plano:12000              configurado en HostConfig :12000
+OK    plano:8001               configurado en HostConfig :8001
+OK    plano:9901               configurado en HostConfig :19901
+ERROR policy-guard:10500       esperado host :10500; compose-port=<vacío>; PortBindings={}
+ERROR provider-sim:10501       esperado host :10501; compose-port=<vacío>; PortBindings={}
+ERROR provider-web-sim:8443    esperado host :18443; compose-port=<vacío>; PortBindings={}
+ERROR governed-agent:10600     esperado host :10600; compose-port=<vacío>; PortBindings={}
+ERROR jaeger:16686             esperado host :16686; compose-port=<vacío>; PortBindings={}
+ERROR jaeger:4317              esperado host :4317; compose-port=<vacío>; PortBindings={}
+ERROR jaeger:4318              esperado host :4318; compose-port=<vacío>; PortBindings={}
+ERROR proxy-interceptor:8081   esperado host :8081; compose-port=<vacío>; PortBindings={}
+
+Origen Compose registrado por Docker:
+project=port-regression-test files=/home/ubuntu/plano-governance-demo/docker-compose.yml,/tmp/ports-cleared.override.yml working_dir=/home/ubuntu/plano-governance-demo
+
+ERROR: Docker creó la pila sin todos los bindings requeridos.
+Los puertos se fijan al CREAR el contenedor; pulsar Start en Docker Desktop no puede añadirlos.
+Recupere la pila desde la raíz del repositorio:
+
+  ./scripts/compose.sh down --remove-orphans
+  ./scripts/up.sh
+
+No use `docker compose run`, el botón Run sobre una imagen ni overrides externos.

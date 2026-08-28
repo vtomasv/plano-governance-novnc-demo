@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+PLANO_DEMO_ROOT="${PLANO_DEMO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+PLANO_COMPOSE_FILE="${PLANO_DEMO_ROOT}/docker-compose.yml"
+PLANO_COMPOSE_PROJECT_NAME="${PLANO_COMPOSE_PROJECT_NAME:-$(basename "$PLANO_DEMO_ROOT")}"
+
 init_docker_command() {
   if ! command -v docker >/dev/null 2>&1; then
     echo "ERROR: Docker no está instalado o no está en PATH." >&2
@@ -21,7 +25,21 @@ init_docker_command() {
 }
 
 docker_compose() {
-  "${DOCKER[@]}" compose "$@"
+  # `-f` explícito tiene precedencia sobre COMPOSE_FILE y evita overrides heredados.
+  "${DOCKER[@]}" compose \
+    --project-directory "$PLANO_DEMO_ROOT" \
+    --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
+    -f "$PLANO_COMPOSE_FILE" \
+    "$@"
+}
+
+docker_compose_real_api() {
+  "${DOCKER[@]}" compose \
+    --project-directory "$PLANO_DEMO_ROOT" \
+    --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
+    -f "$PLANO_COMPOSE_FILE" \
+    -f "${PLANO_DEMO_ROOT}/docker-compose.real-api.yml" \
+    "$@"
 }
 
 docker_engine() {

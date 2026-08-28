@@ -89,12 +89,26 @@ El proxy recibe una copia de la clave privada de esa CA únicamente dentro de su
 
 Los servicios principales están en [`docker-compose.yml`](docker-compose.yml). El archivo construye los escritorios, el agente, el filtro, el proveedor local, el proxy, la imagen offline de Plano y el inicializador de certificados; además fija las imágenes de Jaeger y Nginx.
 
+En Linux o macOS:
+
 ```bash
-cp .env.example .env
-make validate
-make up
-make test
+cp -n .env.example .env
+./scripts/up.sh
+./scripts/smoke-test.sh
 ```
+
+En **Windows con Docker Desktop**, abra PowerShell en la raíz del repositorio:
+
+```powershell
+git pull
+.\scripts\down.ps1
+.\scripts\up.ps1
+.\scripts\diagnose.ps1
+```
+
+Si la política de ejecución local bloquea scripts, use `powershell -ExecutionPolicy Bypass -File .\scripts\up.ps1`. Los scripts fuerzan `docker-compose.yml`, ignoran un `COMPOSE_FILE` heredado, recrean los contenedores y fallan si falta un solo binding.
+
+> No utilice **Run** sobre una imagen, `docker compose run` ni solamente **Start** sobre contenedores creados sin puertos. Los bindings se asignan al crear/recrear el contenedor.
 
 Los accesos predeterminados son:
 
@@ -131,10 +145,13 @@ make purge
 Después del arranque, abra **Control Center** en `http://127.0.0.1:10000` o ejecute:
 
 ```bash
-make diagnose
+./scripts/check-runtime-ports.sh
+./scripts/diagnose.sh
 ```
 
-El diagnóstico muestra el estado de contenedores, los mapeos efectivos, la respuesta HTTP de cada interfaz y las credenciales configuradas localmente. Los puertos se cambian en `.env`; `BIND_ADDRESS=127.0.0.1` evita publicar superficies sensibles en la red.
+En PowerShell use `./scripts/diagnose.ps1`.
+
+El diagnóstico muestra el estado de contenedores, los mapeos efectivos, el `PortBindings` registrado por Docker, los archivos Compose de origen, la respuesta HTTP de cada interfaz y las credenciales configuradas localmente. Los puertos se cambian en `.env`; `BIND_ADDRESS=127.0.0.1` evita publicar superficies sensibles en la red.
 
 > No use `dev/docker-compose.sandbox-internal.yml` en su estación. Es un workaround interno para kernels sin bridge/netfilter anidado y elimina deliberadamente la sección `ports`.
 
@@ -233,7 +250,7 @@ Ejecute:
 ./scripts/smoke-test.sh
 ```
 
-La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-ports-fix.txt`](artifacts/smoke-test-ports-fix.txt).
+La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-bindings-fix.txt`](artifacts/smoke-test-bindings-fix.txt).
 
 Para comprobar que el proveedor no fue llamado:
 
@@ -270,11 +287,15 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 ├── .env.example
 ├── Makefile
 ├── scripts/
+│   ├── check-runtime-ports.sh
 │   ├── compose.sh
+│   ├── diagnose.ps1
 │   ├── diagnose.sh
 │   ├── docker-lib.sh
+│   ├── down.ps1
 │   ├── generate-ca.sh
 │   ├── smoke-test.sh
+│   ├── up.ps1
 │   ├── up.sh
 │   ├── validate.sh
 │   ├── validate_compose.py

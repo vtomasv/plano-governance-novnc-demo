@@ -1,4 +1,4 @@
-.PHONY: up down purge test logs status diagnose certs validate
+.PHONY: up down purge test logs status ports diagnose certs validate
 
 up:
 	./scripts/up.sh
@@ -17,6 +17,9 @@ logs:
 
 status:
 	./scripts/compose.sh ps
+
+ports:
+	./scripts/check-runtime-ports.sh
 
 diagnose:
 	./scripts/diagnose.sh

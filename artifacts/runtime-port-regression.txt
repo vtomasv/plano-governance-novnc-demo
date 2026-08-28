@@ -1,0 +1,20 @@
+OK    control-center:10000     configurado en HostConfig :10000
+OK    desktop-chatgpt:6080     configurado en HostConfig :6080
+OK    desktop-claude:6080      configurado en HostConfig :6081
+OK    desktop-grok:6080        configurado en HostConfig :6082
+OK    plano:12000              configurado en HostConfig :12000
+OK    plano:8001               configurado en HostConfig :8001
+OK    plano:9901               configurado en HostConfig :19901
+OK    policy-guard:10500       configurado en HostConfig :10500
+OK    provider-sim:10501       configurado en HostConfig :10501
+OK    provider-web-sim:8443    configurado en HostConfig :18443
+OK    governed-agent:10600     configurado en HostConfig :10600
+OK    jaeger:16686             configurado en HostConfig :16686
+OK    jaeger:4317              configurado en HostConfig :4317
+OK    jaeger:4318              configurado en HostConfig :4318
+OK    proxy-interceptor:8081   configurado en HostConfig :8081
+
+Origen Compose registrado por Docker:
+project=port-regression-test files=/home/ubuntu/plano-governance-demo/docker-compose.yml working_dir=/home/ubuntu/plano-governance-demo
+
+Bindings de runtime: OK

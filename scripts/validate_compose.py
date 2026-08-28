@@ -23,8 +23,13 @@ EXPECTED: dict[str, set[tuple[int, int]]] = {
     },
     "policy-guard": {(10500, env_int("POLICY_GUARD_PORT", 10500))},
     "provider-sim": {(10501, env_int("PROVIDER_SIM_PORT", 10501))},
+    "provider-web-sim": {(8443, env_int("PROVIDER_TLS_PORT", 18443))},
     "governed-agent": {(10600, env_int("GOVERNED_AGENT_PORT", 10600))},
-    "jaeger": {(16686, env_int("JAEGER_UI_PORT", 16686))},
+    "jaeger": {
+        (16686, env_int("JAEGER_UI_PORT", 16686)),
+        (4317, env_int("OTLP_GRPC_PORT", 4317)),
+        (4318, env_int("OTLP_HTTP_PORT", 4318)),
+    },
     "proxy-interceptor": {(8081, env_int("MITMPROXY_UI_PORT", 8081))},
 }
 

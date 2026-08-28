@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+# shellcheck source=scripts/docker-lib.sh
+source "$ROOT_DIR/scripts/docker-lib.sh"
+init_docker_command
 
 if [[ -f .env ]]; then
   set -a
@@ -30,31 +33,19 @@ MITMWEB_PASSWORD="${MITMWEB_PASSWORD:-plano-demo}"
 host_for_url="$BIND_ADDRESS"
 [[ "$host_for_url" == "0.0.0.0" ]] && host_for_url="127.0.0.1"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "ERROR: Docker no está instalado o no está en PATH." >&2
-  exit 1
-fi
-
-DOCKER=(docker)
-if ! docker info >/dev/null 2>&1; then
-  if command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
-    DOCKER=(sudo docker)
-  else
-    echo "ERROR: Docker Engine no responde. Inicie Docker Desktop/Engine o habilite acceso al daemon." >&2
-    exit 1
-  fi
-fi
-
 printf '\n=== Versiones ===\n'
 "${DOCKER[@]}" version --format 'Docker Engine: {{.Server.Version}}'
 "${DOCKER[@]}" compose version
 
 printf '\n=== Validación del Compose principal ===\n'
-"${DOCKER[@]}" compose config --quiet
+if [[ -n "${COMPOSE_FILE:-}" ]]; then
+  echo "Aviso: COMPOSE_FILE=$COMPOSE_FILE está definido, pero será ignorado por estos scripts."
+fi
+docker_compose config --quiet
 echo "Compose válido. No use dev/docker-compose.sandbox-internal.yml en su estación."
 
 printf '\n=== Estado de contenedores ===\n'
-"${DOCKER[@]}" compose ps -a
+docker_compose ps -a
 
 printf '\n=== Mapeos de puertos efectivos ===\n'
 for item in \
@@ -67,18 +58,29 @@ for item in \
   'plano:9901' \
   'policy-guard:10500' \
   'provider-sim:10501' \
+  'provider-web-sim:8443' \
   'governed-agent:10600' \
   'jaeger:16686' \
+  'jaeger:4317' \
+  'jaeger:4318' \
   'proxy-interceptor:8081'; do
   service="${item%%:*}"
   target="${item##*:}"
-    mapping="$("${DOCKER[@]}" compose port "$service" "$target" 2>/dev/null || true)"
+  mapping="$(docker_compose port "$service" "$target" 2>/dev/null || true)"
   if [[ -n "$mapping" ]]; then
     printf 'OK    %-24s %s -> %s\n' "$service:$target" "$mapping" "$target"
   else
     printf 'FALTA %-24s sin publicación; revise si el contenedor está creado/activo.\n' "$service:$target"
   fi
 done
+
+origin_id="$(docker_compose ps -q plano 2>/dev/null || true)"
+if [[ -n "$origin_id" ]]; then
+  printf '\n=== Origen de la pila registrado en Docker ===\n'
+  docker_engine inspect "$origin_id" \
+    --format 'project={{index .Config.Labels "com.docker.compose.project"}} files={{index .Config.Labels "com.docker.compose.project.config_files"}} working_dir={{index .Config.Labels "com.docker.compose.project.working_dir"}}' \
+    2>/dev/null || true
+fi
 
 check_url() {
   local label="$1" url="$2" expected="${3:-2}"
@@ -133,8 +135,8 @@ if (( failures > 0 )); then
 
 Se detectaron $failures comprobaciones fallidas.
 Use:
-  docker compose logs --tail=200 <servicio>
-  docker compose up -d --build --force-recreate
+  ./scripts/compose.sh logs --tail=200 <servicio>
+  ./scripts/up.sh
 EOF
   exit 1
 fi
