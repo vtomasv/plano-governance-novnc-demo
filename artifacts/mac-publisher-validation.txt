@@ -1,0 +1,443 @@
+Preflight macOS Apple Silicon:
+  Host:             Linux/x86_64
+  Docker Server:    linux/amd64
+  Docker context:   default
+  Plataforma build: linux/arm64
+  Compose base:     /home/ubuntu/plano-governance-demo/docker-compose.yml
+  Compose arm64:    /home/ubuntu/plano-governance-demo/docker-compose.mac-arm64.yml
+  Publisher Mac:    /home/ubuntu/plano-governance-demo/docker-compose.mac-publisher.yml
+docker.io/library/nginx@sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5: Pulling from library/nginx
+Digest: sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5
+Status: Image is up to date for nginx@sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5
+docker.io/library/nginx:1.28.0-alpine@sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5
+docker.io/jaegertracing/all-in-one@sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a: Pulling from jaegertracing/all-in-one
+Digest: sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a
+Status: Image is up to date for jaegertracing/all-in-one@sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a
+docker.io/jaegertracing/all-in-one:1.68.0@sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a
+docker.io/library/haproxy@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438: Pulling from library/haproxy
+Digest: sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
+Status: Image is up to date for haproxy@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
+docker.io/library/haproxy:3.2.22-alpine@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
+#0 building with "default" instance using docker driver
+
+#1 [cert-init internal] load build definition from Dockerfile
+#1 transferring dockerfile: 247B done
+#1 DONE 0.0s
+
+#2 [policy-guard internal] load build definition from Dockerfile
+#2 transferring dockerfile: 649B done
+#2 DONE 0.0s
+
+#3 [control-center internal] load build definition from Dockerfile
+#3 transferring dockerfile: 674B done
+#3 DONE 0.0s
+
+#4 [provider-sim internal] load build definition from Dockerfile
+#4 transferring dockerfile: 613B done
+#4 DONE 0.0s
+
+#5 [cert-init internal] load metadata for docker.io/library/alpine:3.22.1
+#5 DONE 0.1s
+
+#6 [policy-guard internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm
+#6 DONE 0.1s
+
+#7 [cert-init internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [cert-init 1/4] FROM docker.io/library/alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
+#8 resolve docker.io/library/alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1 0.0s done
+#8 DONE 0.0s
+
+#9 [cert-init internal] load build context
+#9 transferring context: 71B done
+#9 DONE 0.0s
+
+#10 [cert-init 3/4] COPY scripts/generate-ca.sh /usr/local/bin/generate-ca.sh
+#10 CACHED
+
+#11 [cert-init 2/4] RUN apk add --no-cache openssl
+#11 CACHED
+
+#12 [cert-init 4/4] RUN chmod 0755 /usr/local/bin/generate-ca.sh
+#12 CACHED
+
+#13 [provider-sim internal] load .dockerignore
+#13 transferring context: 2B done
+#13 DONE 0.0s
+
+#14 [policy-guard internal] load .dockerignore
+#14 transferring context: 2B done
+#14 DONE 0.0s
+
+#15 [control-center internal] load .dockerignore
+#15 transferring context: 2B done
+#15 DONE 0.0s
+
+#16 [provider-sim internal] load build context
+#16 transferring context: 63B done
+#16 DONE 0.0s
+
+#17 [policy-guard internal] load build context
+#17 transferring context: 63B done
+#17 DONE 0.0s
+
+#18 [control-center internal] load build context
+#18 transferring context: 9.14kB done
+#18 DONE 0.0s
+
+#19 [provider-sim 1/6] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#19 resolve docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7 0.0s done
+#19 DONE 0.0s
+
+#20 [control-center 3/6] COPY requirements.txt ./
+#20 CACHED
+
+#21 [control-center 2/6] WORKDIR /app
+#21 CACHED
+
+#22 [control-center 4/6] RUN pip install --no-cache-dir -r requirements.txt     && useradd --create-home --uid 10030 control
+#22 CACHED
+
+#23 [provider-sim 2/6] RUN useradd --create-home --uid 10002 appuser
+#23 CACHED
+
+#24 [provider-sim 4/6] COPY requirements.txt ./
+#24 CACHED
+
+#25 [provider-sim 5/6] RUN pip install --no-cache-dir --requirement requirements.txt
+#25 CACHED
+
+#26 [provider-sim 3/6] WORKDIR /app
+#26 CACHED
+
+#27 [provider-sim 6/6] COPY app.py ./
+#27 CACHED
+
+#28 [policy-guard 2/6] RUN useradd --create-home --uid 10001 appuser
+#28 CACHED
+
+#29 [policy-guard 4/6] COPY requirements.txt ./
+#29 CACHED
+
+#30 [policy-guard 3/6] WORKDIR /app
+#30 CACHED
+
+#31 [policy-guard 5/6] RUN pip install --no-cache-dir --requirement requirements.txt
+#31 CACHED
+
+#32 [policy-guard 6/6] COPY app.py ./
+#32 CACHED
+
+#33 [cert-init] exporting to image
+#33 exporting layers done
+#33 exporting manifest sha256:d9e82aae1638cfd87b208cdbca7a43f9e813a34481949ccd69df2ba8f7f9951a done
+#33 exporting config sha256:3d186c589f2a3ec041b8572b8b547e00c01cffa9ccd79d9d1c2b2b8005b33d71 done
+#33 exporting attestation manifest sha256:109352d931279f9fd15d0273db47a8ff02ebbe9ec26a3997d6c22a4628e326ad done
+#33 exporting manifest list sha256:f776d84cde500d610fc317ec0cd87e2483063ddfcb81cfbb40c905f95218a6c3 done
+#33 naming to docker.io/library/mac-publisher-final-cert-init:latest done
+#33 DONE 0.0s
+
+#34 [control-center 5/6] COPY --chown=control:control app.py ./
+#34 DONE 0.0s
+
+#35 [control-center 6/6] COPY --chown=control:control static/ ./static/
+#35 DONE 0.0s
+
+#36 [provider-sim] exporting to image
+#36 exporting layers done
+#36 exporting manifest sha256:609e75face237c0c1b1aaf87bc9c154f83c908e248b3882a2d006e78a82e7d29 done
+#36 exporting config sha256:8303e42b37b6ac6eb9b19b9bb43df751ebb75fce8429b3698dbbab38be147528 done
+#36 exporting attestation manifest sha256:a5c136eec6aec3ecca85033cea6eafebbe7b0fde4b5e082887f8ddf515491043 done
+#36 exporting manifest list sha256:1082276420cc41de0e92fc8034d8a396271cd54dbc185fbf80a3851a11cd3ca2 done
+#36 naming to docker.io/library/mac-publisher-final-provider-sim:latest done
+#36 DONE 0.1s
+
+#37 [policy-guard] exporting to image
+#37 exporting layers done
+#37 exporting manifest sha256:8d4eee3631771b76e1ce8108d291ca909e5705f8652b66fcd009effa9e6dd119 done
+#37 exporting config sha256:ddcb07837506e54581af100dd655cc3504c7d276eef95833707be6b02f23ac44 done
+#37 exporting attestation manifest sha256:b0d7eb2e5f2eca14d8d25a300dcdfdd341ec17f32c5f4683fb70fd877b64c0d1 0.0s done
+#37 exporting manifest list sha256:381eb9479a7ae808da5fceab22151d8849fb654c5784545ddca2cab56fc16d7f done
+#37 naming to docker.io/library/mac-publisher-final-policy-guard:latest done
+#37 DONE 0.1s
+
+#38 [cert-init] resolving provenance for metadata file
+#38 DONE 0.0s
+
+#39 [control-center] exporting to image
+#39 exporting layers 0.0s done
+#39 exporting manifest sha256:ed2692e6014ec6dd0d9c64fc1e287cde50c9cd572e7e581b54f1eeda861ed1a4 done
+#39 exporting config sha256:428ecfbbc5c6ebcedc12a44e85ae6f165649bb3dec7182702f04791828110a7d done
+#39 exporting attestation manifest sha256:d518d8bb952ec2ff5c1c8837cd93ae12e2ddcd893681b6fe42b3bcbf61ee95d9 done
+#39 exporting manifest list sha256:7cb3c5741d8152e209ddfeac621600339d7f7bfb50113e77ff889f9645bbfcd6 done
+#39 naming to docker.io/library/mac-publisher-final-control-center:latest done
+#39 DONE 0.1s
+
+#40 [policy-guard] resolving provenance for metadata file
+#40 DONE 0.0s
+
+#41 [provider-sim] resolving provenance for metadata file
+#41 DONE 0.0s
+
+#42 [control-center] resolving provenance for metadata file
+#42 DONE 0.0s
+
+#43 [plano internal] load build definition from Dockerfile
+#43 transferring dockerfile: 280B done
+#43 DONE 0.0s
+
+#44 [plano internal] load metadata for docker.io/katanemo/plano:0.4.36
+#44 DONE 0.1s
+
+#45 [plano internal] load .dockerignore
+#45 transferring context: 2B done
+#45 DONE 0.0s
+
+#46 [plano 1/3] FROM docker.io/katanemo/plano:0.4.36@sha256:8485012d5a3b20309f29e9b3b7fa5faafba7d1b043bb01fc6af5cc8638eb1316
+#46 resolve docker.io/katanemo/plano:0.4.36@sha256:8485012d5a3b20309f29e9b3b7fa5faafba7d1b043bb01fc6af5cc8638eb1316 done
+#46 DONE 0.0s
+
+#47 [plano 2/3] WORKDIR /app
+#47 CACHED
+
+#48 [plano 3/3] RUN uv sync --frozen --no-dev &&     sed -i 's#uv run python -m planoai.config_generator#/app/.venv/bin/python -m planoai.config_generator#' /etc/supervisor/conf.d/supervisord.conf
+#48 CACHED
+
+#49 [plano] exporting to image
+#49 exporting layers done
+#49 exporting manifest sha256:0384d97d58e7613ba55157c221931cc0a62224068a4cc9f216a9f8f8eec50047 done
+#49 exporting config sha256:675e15f2d64630afc46cac6869fb291ddefef73bd22baa36f79b310ffb6745e1 done
+#49 exporting attestation manifest sha256:a10e3a4213445fa35477f09ed40fc73d071b9d9ab769a7c716dc4353ab8ef1ed done
+#49 exporting manifest list sha256:168e25a2df08dbf3b696a3ade5582f355c2db3b438ce09672af1308e66565e95 done
+#49 naming to docker.io/plano-governance-demo/plano:0.4.36 done
+#49 DONE 0.1s
+
+#50 [plano] resolving provenance for metadata file
+#50 DONE 0.0s
+
+#51 [governed-agent internal] load build definition from Dockerfile
+#51 transferring dockerfile: 636B done
+#51 DONE 0.0s
+
+#52 [proxy-interceptor internal] load build definition from Dockerfile
+#52 transferring dockerfile: 834B done
+#52 DONE 0.0s
+
+#6 [governed-agent internal] load metadata for docker.io/library/python:3.12.11-slim-bookworm
+#6 DONE 0.2s
+
+#53 [proxy-interceptor internal] load .dockerignore
+#53 transferring context: 2B done
+#53 DONE 0.0s
+
+#54 [governed-agent internal] load .dockerignore
+#54 transferring context: 2B done
+#54 DONE 0.0s
+
+#55 [governed-agent internal] load build context
+#55 transferring context: 126B done
+#55 DONE 0.0s
+
+#19 [governed-agent 1/6] FROM docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7
+#19 resolve docker.io/library/python:3.12.11-slim-bookworm@sha256:519591d6871b7bc437060736b9f7456b8731f1499a57e22e6c285135ae657bf7 done
+#19 DONE 0.0s
+
+#56 [governed-agent 4/7] COPY requirements.txt ./
+#56 CACHED
+
+#57 [governed-agent 5/7] RUN pip install --no-cache-dir --requirement requirements.txt
+#57 CACHED
+
+#58 [governed-agent 6/7] COPY app.py ./
+#58 CACHED
+
+#59 [governed-agent 2/7] RUN useradd --create-home --uid 10003 appuser
+#59 CACHED
+
+#60 [governed-agent 3/7] WORKDIR /app
+#60 CACHED
+
+#61 [governed-agent 7/7] COPY static/ ./static/
+#61 CACHED
+
+#62 [proxy-interceptor internal] load build context
+#62 transferring context: 69B done
+#62 DONE 0.0s
+
+#63 [proxy-interceptor 4/6] COPY governance.py ./
+#63 CACHED
+
+#64 [proxy-interceptor 2/6] RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gosu tini     && pip install --no-cache-dir "mitmproxy==12.2.3"     && useradd --create-home --uid 10020 mitm     && apt-get clean && rm -rf /var/lib/apt/lists/*
+#64 CACHED
+
+#65 [proxy-interceptor 5/6] COPY start-proxy.sh /usr/local/bin/start-proxy.sh
+#65 CACHED
+
+#66 [proxy-interceptor 3/6] WORKDIR /app
+#66 CACHED
+
+#67 [proxy-interceptor 6/6] RUN chmod 0755 /usr/local/bin/start-proxy.sh
+#67 CACHED
+
+#68 [proxy-interceptor] exporting to image
+#68 exporting layers done
+#68 exporting manifest sha256:fb60783767f3f3deb46be487fed124242aab5b978bef6afeba5fa4e0f998506d done
+#68 exporting config sha256:0a8905fee8f9096c3c545c13d9dff445730f4bb424dad24808798f44b041b93b done
+#68 exporting attestation manifest sha256:efdbe77cbdd330fb6f0f070df36d012318a7cd8b6565a2352ed75a406674ff6a done
+#68 exporting manifest list sha256:9f5f2d5fae84aa14a4a42b169e14a68ada634b51c1b3980d3ad84805b94616d4 done
+#68 naming to docker.io/library/mac-publisher-final-proxy-interceptor:latest done
+#68 DONE 0.0s
+
+#69 [governed-agent] exporting to image
+#69 exporting layers done
+#69 exporting manifest sha256:661eb64ae539c798271e80a182c979439ef3fdf97fe66d70d4d56df09048e267 done
+#69 exporting config sha256:88588a66eae30d06cb4f187d01958b3fe2cdfcfef65eed218fe8372bbc143068 done
+#69 exporting attestation manifest sha256:24f5c9760bad7cf52ada545fe497f4979179857e8599fb975d55b111a9c214d8 done
+#69 exporting manifest list sha256:07f77cadf19dd1531b508615bff60c41a57f845c9edefa9582a5fdbd01aa3596 done
+#69 naming to docker.io/library/mac-publisher-final-governed-agent:latest done
+#69 DONE 0.0s
+
+#70 [governed-agent] resolving provenance for metadata file
+#70 DONE 0.0s
+
+#71 [proxy-interceptor] resolving provenance for metadata file
+#71 DONE 0.0s
+
+#72 [desktop-chatgpt internal] load build definition from Dockerfile
+#72 transferring dockerfile: 1.35kB done
+#72 DONE 0.0s
+
+#73 [desktop-claude internal] load build definition from Dockerfile
+#73 transferring dockerfile: 1.35kB done
+#73 DONE 0.0s
+
+#74 [desktop-grok internal] load build definition from Dockerfile
+#74 transferring dockerfile: 1.35kB done
+#74 DONE 0.0s
+
+#75 [desktop-grok internal] load metadata for docker.io/library/debian:bookworm-slim
+#75 DONE 0.1s
+
+#76 [desktop-claude internal] load .dockerignore
+#76 transferring context: 2B done
+#76 DONE 0.0s
+
+#77 [desktop-grok internal] load .dockerignore
+#77 transferring context: 2B done
+#77 DONE 0.0s
+
+#78 [desktop-chatgpt internal] load .dockerignore
+#78 transferring context: 2B done
+#78 DONE 0.0s
+
+#79 [desktop-chatgpt 1/5] FROM docker.io/library/debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171
+#79 resolve docker.io/library/debian:bookworm-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 done
+#79 DONE 0.0s
+
+#80 [desktop-chatgpt internal] load build context
+#80 transferring context: 193B done
+#80 DONE 0.0s
+
+#81 [desktop-grok internal] load build context
+#81 transferring context: 193B done
+#81 DONE 0.0s
+
+#82 [desktop-claude internal] load build context
+#82 transferring context: 193B done
+#82 DONE 0.0s
+
+#83 [desktop-chatgpt 2/5] RUN apt-get update && apt-get install -y --no-install-recommends       ca-certificates chromium curl dbus-x11 git libnss3-tools netcat-openbsd       openssl procps python3 python3-pip sudo supervisor tini wget       x11vnc xfce4 xfce4-terminal xvfb     && pip3 install --break-system-packages --no-cache-dir "websockify==0.13.0"     && git clone --depth 1 --branch "v1.7.0" https://github.com/novnc/noVNC.git /opt/novnc     && useradd --create-home --uid 10010 --shell /bin/bash demo     && mkdir -p /home/demo/.config/chromium /home/demo/.pki/nssdb /home/demo/.vnc /opt/governance-extension     && chown -R demo:demo /home/demo     && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/*
+#83 CACHED
+
+#84 [desktop-chatgpt 4/5] COPY extension/ /opt/governance-extension/
+#84 CACHED
+
+#85 [desktop-chatgpt 3/5] COPY start-desktop.sh /usr/local/bin/start-desktop.sh
+#85 CACHED
+
+#86 [desktop-claude 5/5] RUN chmod 0755 /usr/local/bin/start-desktop.sh && chmod -R a+rX /opt/governance-extension
+#86 CACHED
+
+#87 [desktop-chatgpt] exporting to image
+#87 exporting layers done
+#87 exporting manifest sha256:07915a05876404b5845989797b9288aacd630be5c3d8b532b95243be97e10bd7 done
+#87 exporting config sha256:b6011072bfdb1af1dc4c6994b3805a2b3bd5a91eecdb58fe219f7ab0779da77a done
+#87 exporting attestation manifest sha256:3493cd610266dc2e60ba73a98c58856bfebc1f1e99489549f786b8b8fe324290 0.0s done
+#87 exporting manifest list sha256:3cac11e14c85ba9a236d6a2b8a3cbe46aa29a03aa2e6fad013906c55342db46c done
+#87 naming to docker.io/library/mac-publisher-final-desktop-chatgpt:latest done
+#87 DONE 0.1s
+
+#88 [desktop-grok] exporting to image
+#88 exporting layers done
+#88 exporting manifest sha256:941d963fd35be8a15ed8d1046af0aebb9d6292ce8b7ff33ddb4f4c365cfb87fa done
+#88 exporting config sha256:35557e5fbea41b3e414fa93ced45634832e1e7fcc8fde35413eb0240139b2799 done
+#88 exporting attestation manifest sha256:ad665b5562ee8db355d84c9c226bb7962b1e70dec2dab93ca2909dbf8444258f done
+#88 exporting manifest list sha256:918932496c4ae5daab03054b399b7c17e2ba168e4d063ba168211bcb61c52317 done
+#88 naming to docker.io/library/mac-publisher-final-desktop-grok:latest done
+#88 DONE 0.1s
+
+#89 [desktop-claude] exporting to image
+#89 exporting layers done
+#89 exporting manifest sha256:62a6bea7e2488575f8247af991e33af01895ef1344a72727fed4cb84124471d5 done
+#89 exporting config sha256:16e7b24c500eb23f947831fbf7ecf1cc6b00e0dfda1005649af26db0050d7b50 done
+#89 exporting attestation manifest sha256:1cc632ade3eaa0d9a486eb721cac67bfc5ee1fa68a8e673661b8373c18f3928d done
+#89 exporting manifest list sha256:8dc23cd68eecb0368ff8fd352fcca55eb4436767d7d8b3913dffe1a1d6ad055f done
+#89 naming to docker.io/library/mac-publisher-final-desktop-claude:latest done
+#89 DONE 0.1s
+
+#90 [desktop-chatgpt] resolving provenance for metadata file
+#90 DONE 0.0s
+
+#91 [desktop-grok] resolving provenance for metadata file
+#91 DONE 0.0s
+
+#92 [desktop-claude] resolving provenance for metadata file
+#92 DONE 0.0s
+OK    Control Center               127.0.0.1:10000 -> host-publisher:10000
+OK    ChatGPT noVNC                127.0.0.1:6080 -> host-publisher:6080
+OK    Claude noVNC                 127.0.0.1:6081 -> host-publisher:6081
+OK    Grok noVNC                   127.0.0.1:6082 -> host-publisher:6082
+OK    Plano Gateway                127.0.0.1:12000 -> host-publisher:12000
+OK    Plano Agent                  127.0.0.1:8001 -> host-publisher:8001
+OK    Plano Admin                  127.0.0.1:19901 -> host-publisher:19901
+OK    Policy Guard                 127.0.0.1:10500 -> host-publisher:10500
+OK    Provider Sim                 127.0.0.1:10501 -> host-publisher:10501
+OK    Provider TLS                 127.0.0.1:18443 -> host-publisher:18443
+OK    Governed Agent               127.0.0.1:10600 -> host-publisher:10600
+OK    Jaeger UI                    127.0.0.1:16686 -> host-publisher:16686
+OK    OTLP gRPC                    127.0.0.1:4317 -> host-publisher:4317
+OK    OTLP HTTP                    127.0.0.1:4318 -> host-publisher:4318
+OK    mitmweb                      127.0.0.1:8081 -> host-publisher:8081
+OK    HAProxy stats                127.0.0.1:8404 -> host-publisher:8404
+
+Comprobando ausencia de publicación directa:
+OK    control-center               PortBindings={}
+OK    policy-guard                 PortBindings={}
+OK    provider-sim                 PortBindings={}
+OK    provider-web-sim             PortBindings={}
+OK    jaeger                       PortBindings={}
+OK    plano                        PortBindings={}
+OK    governed-agent               PortBindings={}
+OK    proxy-interceptor            PortBindings={}
+OK    desktop-chatgpt              PortBindings={}
+OK    desktop-claude               PortBindings={}
+OK    desktop-grok                 PortBindings={}
+OK    host-publisher sin red egress
+
+Publisher único: OK
+OK    cert-init                linux/arm64
+OK    control-center           linux/arm64
+OK    policy-guard             linux/arm64
+OK    provider-sim             linux/arm64
+OK    provider-web-sim         linux/arm64
+OK    jaeger                   linux/arm64
+OK    plano                    linux/arm64
+OK    governed-agent           linux/arm64
+OK    proxy-interceptor        linux/arm64
+OK    desktop-chatgpt          linux/arm64
+OK    desktop-claude           linux/arm64
+OK    desktop-grok             linux/arm64
+OK    host-publisher           linux/arm64
+Validación macOS/arm64 completada sin iniciar la pila.

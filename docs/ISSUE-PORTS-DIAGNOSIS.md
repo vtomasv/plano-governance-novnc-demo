@@ -1,24 +1,63 @@
 # Diagnóstico de puertos y superficies operativas
 
-## Síntomas reproducidos
+## Síntoma histórico
 
-El archivo principal `docker-compose.yml` sí publica `6080`, `6081` y `6082`, además de `10500`, `10501`, `10600`, `12000`, `16686`, `19901` y `8081` en `127.0.0.1`.
+La primera versión publicaba puertos desde cada servicio. Algunos despliegues quedaron con `HostConfig.PortBindings={}` en los escritorios, mientras Plano conservaba bindings. Un contenedor no adquiere puertos al pulsar **Start**: solo al recrearse con una configuración que declare `ports`.
 
-El síntoma descrito —Plano visible en `12000/8001/19901`, mitmweb visible en `8081`, pero escritorios y otros servicios sin puertos publicados— aparece al combinar el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese override contiene `network_mode: host` y `ports: !reset []` para todos los servicios. En Linux con red de host los procesos siguen escuchando directamente en el host, pero Docker no muestra mapeos en la columna `PORTS`; en Docker Desktop, la semántica puede ser distinta o no estar habilitada.
+El patrón se reprodujo mediante un `COMPOSE_FILE` externo y también puede aparecer al usar `docker compose run`, el botón **Run** sobre una imagen o el override interno de desarrollo.
 
-## Causa raíz
+## Estrategia actual en Mac
 
-Docker había creado la mayoría de los contenedores con `HostConfig.PortBindings={}`. Un contenedor conserva esa configuración cuando se pulsa **Start**; los bindings solo aparecen al recrearlo con una configuración que contenga `ports`.
+El perfil macOS ya no publica cada servicio de forma independiente. `mac-up.sh` combina:
 
-Se reprodujo el mismo patrón mediante un `COMPOSE_FILE` externo que fusionó un override y eliminó los puertos. Otros desencadenantes equivalentes son `docker compose run`, el botón **Run** sobre una imagen o una pila obsoleta. `dev/docker-compose.sandbox-internal.yml` sigue siendo un workaround exclusivo del sandbox y no es un archivo de despliegue.
+```text
+docker-compose.yml
+docker-compose.mac-arm64.yml
+docker-compose.mac-publisher.yml
+```
 
-## Correcciones aplicadas
+`host-publisher-1` ejecuta HAProxy y es el **único contenedor con PortBindings**. Los tres escritorios, Plano, Policy Guard, Governed Agent, Jaeger, mitmweb y proveedores aparecen sin puertos en Docker Desktop por diseño.
 
-1. El despliegue soportado usa `scripts/up.sh` o `scripts/up.ps1`; ambos fuerzan el Compose principal y tienen mapeos explícitos y configurables.
-2. El override interno se movió a `dev/` y está marcado como no soportado para Docker Desktop.
-3. Se añadió Control Center en `http://127.0.0.1:10000` con salud, enlaces y configuración operativa segura.
-4. La contraseña de mitmweb es `MITMWEB_PASSWORD`, independiente de `VNC_PASSWORD`, y se muestra al finalizar el arranque.
-5. Plano tiene healthcheck contra `/healthz`; Envoy Admin en `19901` queda documentado como diagnóstico, no como editor de configuración.
-6. Los wrappers fuerzan la ruta absoluta del Compose principal, ignoran `COMPOSE_FILE` y fijan el nombre de proyecto.
-7. El arranque usa `--force-recreate` y valida `HostConfig.PortBindings` antes de informar éxito.
-8. Docker Desktop dispone de scripts PowerShell nativos para iniciar, detener y diagnosticar.
+| Estado en Docker Desktop | Interpretación |
+|---|---|
+| `host-publisher-1` muestra `6080`, `6081`, `6082`, etc. | Correcto |
+| Los escritorios no muestran `Port(s)` | Correcto; HAProxy los publica |
+| `host-publisher-1` tampoco muestra puertos | Fallo; recrear la pila |
+| `http://127.0.0.1:8404` muestra backends UP | Publisher operativo |
+
+## Verificación
+
+```bash
+./scripts/check-publisher-ports.sh
+./scripts/mac-diagnose.sh
+```
+
+El resultado esperado es:
+
+```text
+host-publisher: 16 bindings en 127.0.0.1
+servicios internos: 11 sin bindings directos
+publisher sin red egress
+13 imágenes linux/arm64
+```
+
+## Recuperación
+
+```bash
+git pull
+chmod +x scripts/*.sh
+./scripts/down.sh
+./scripts/mac-up.sh
+```
+
+No agregue `-f dev/docker-compose.sandbox-internal.yml`, no use `docker compose run` y no cree los escritorios desde el botón **Run** de una imagen.
+
+## Controles aplicados
+
+1. HAProxy 3.2.22 se fija por digest arm64 y usa configuración de solo lectura.
+2. Todos los bindings están hardcodeados a `127.0.0.1`.
+3. Los escritorios pertenecen solo a la red `control`.
+4. `host-publisher` no pertenece a la red `egress`.
+5. El arranque falla si falta un binding o aparece uno directo en un backend.
+6. Control Center expone la salud consolidada en `10000`; HAProxy expone estadísticas en `8404`.
+7. El modo TCP conserva WebSocket/noVNC, TLS, SSE y gRPC sin terminación ni reescritura.

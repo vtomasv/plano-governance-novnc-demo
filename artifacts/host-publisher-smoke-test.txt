@@ -1,7 +1,7 @@
 PASS  Control Center disponible
-PASS  ChatGPT noVNC :6080 disponible
-PASS  Claude noVNC :6081 disponible
-PASS  Grok noVNC :6082 disponible
+PASS  ChatGPT noVNC :26080 disponible
+PASS  Claude noVNC :26081 disponible
+PASS  Grok noVNC :26082 disponible
 PASS  policy-guard disponible
 PASS  provider-sim disponible
 PASS  Plano Gateway disponible

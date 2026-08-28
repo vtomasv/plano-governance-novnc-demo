@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 — 2026-08-27
+
+Esta versión adopta la estrategia de **publisher único HAProxy** para macOS Apple Silicon. Los escritorios y servicios internos dejan de publicar puertos individualmente; Docker Desktop muestra todos los bindings en `host-publisher-1`.
+
+| Cambio | Resultado |
+|---|---|
+| Publisher | HAProxy 3.2.22 arm64, fijado por digest y limitado a loopback |
+| noVNC | `6080`, `6081` y `6082` atraviesan TCP/WebSocket sin terminación ni reescritura |
+| Aislamiento | Once servicios con `PortBindings={}`; escritorios solo en `control` |
+| Egress | `host-publisher` no pertenece a la red `egress`; Plano y el proxy conservan la salida gobernada |
+| Diagnóstico | `check-publisher-ports.sh`, HAProxy stats en `8404` y tarjeta en Control Center |
+| Validación | Trece imágenes arm64, dieciséis bindings, WebSocket `101` y 23/23 pruebas funcionales |
+
 ## 1.2.0 — 2026-08-27
 
 Esta versión convierte **macOS Apple Silicon** en una plataforma validada de forma explícita y corrige la recomendación errónea de PowerShell para un Mac M3.

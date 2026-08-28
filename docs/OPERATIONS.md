@@ -14,7 +14,7 @@ chmod +x scripts/*.sh
 ./scripts/mac-diagnose.sh
 ```
 
-En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios. En Mac, `mac-up.sh` combina el Compose principal con `docker-compose.mac-arm64.yml`, exige imágenes `linux/arm64`, usa `--force-recreate`, comprueba `HostConfig.PortBindings` y aborta si Docker omite un puerto. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
+En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios. En Mac, `mac-up.sh` combina el Compose principal con `docker-compose.mac-arm64.yml` y `docker-compose.mac-publisher.yml`, exige imágenes `linux/arm64`, usa `--force-recreate` y comprueba que los dieciséis `PortBindings` existan exclusivamente en `host-publisher`. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
 
 | Puerto predeterminado | Servicio | Uso |
 |---:|---|---|
@@ -30,8 +30,9 @@ En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios.
 | `10600` | Governed Agent | Interfaz directa y API del agente |
 | `16686` | Jaeger | Trazas de Plano |
 | `8081` | mitmweb | Inspección de flujos del proxy TLS |
+| `8404` | HAProxy stats | Estado de cada backend publicado |
 
-Todos los puertos se vinculan de forma predeterminada a `127.0.0.1`. Cambie `BIND_ADDRESS=0.0.0.0` solo si necesita acceso remoto y cuenta con firewall, VPN o un reverse proxy autenticado.
+En Mac, todos los puertos de `host-publisher` están fijados deliberadamente a `127.0.0.1`; cambiar `BIND_ADDRESS` no los expone a la LAN. Un acceso remoto requiere un diseño separado con autenticación, firewall o VPN.
 
 ## Qué configurar en `http://127.0.0.1:19901/`
 
@@ -60,8 +61,8 @@ La configuración fuente se realiza en [`plano/config.local.yaml`](../plano/conf
 Después de editarla, aplique los cambios con:
 
 ```bash
-docker compose up -d --force-recreate plano governed-agent proxy-interceptor
-docker compose logs --tail=200 plano
+./scripts/mac-up.sh
+./scripts/compose.sh logs --tail=200 plano
 curl -fsS http://127.0.0.1:12000/healthz
 curl -fsS http://127.0.0.1:19901/ready
 ```
@@ -83,23 +84,25 @@ grep '^MITMWEB_PASSWORD=' .env
 Para cambiarlo, edite `MITMWEB_PASSWORD` y recree exclusivamente el proxy:
 
 ```bash
-docker compose up -d --force-recreate proxy-interceptor
+./scripts/mac-up.sh
 ```
 
 La contraseña noVNC es independiente y está en `VNC_PASSWORD`. `./scripts/up.sh` y `./scripts/diagnose.sh` muestran ambos valores en la terminal local.
 
 ## Diagnóstico rápido de puertos ausentes
 
-El patrón donde solo Plano muestra puertos significa que esos contenedores fueron **creados** sin `PortBindings`. Pulsar Start en Docker Desktop mantiene la configuración original: es necesario recrearlos.
+Con el perfil Mac actual, los escritorios, Plano, Policy Guard y los demás backends aparecen **sin puertos por diseño**. Docker Desktop debe mostrar los bindings únicamente en `host-publisher-1`. Esto reduce la superficie publicada y evita depender de cómo Docker Desktop representa bindings sobre redes internas.
 
 La causa puede ser un `COMPOSE_FILE` heredado, un override externo, `docker compose run`, el botón Run sobre una imagen o contenedores obsoletos. Los scripts nuevos neutralizan `COMPOSE_FILE` mediante `-f /ruta/absoluta/docker-compose.yml` y muestran la etiqueta `com.docker.compose.project.config_files` registrada por Docker.
 
-En Bash:
+En Mac:
 
 ```bash
-./scripts/check-runtime-ports.sh
-./scripts/diagnose.sh
+./scripts/check-publisher-ports.sh
+./scripts/mac-diagnose.sh
 ```
+
+En Linux sin publisher use `./scripts/check-runtime-ports.sh` y `./scripts/diagnose.sh`.
 
 En PowerShell:
 
@@ -117,7 +120,7 @@ Para recuperar la pila en un Mac M3:
 
 Para recuperar en Linux use `./scripts/up.sh`; en Windows use `scripts/down.ps1` y `scripts/up.ps1`.
 
-Los resultados esperados terminan respectivamente en `6080`, `6081` y `6082`; además deben aparecer `10000`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901` y `8081`. Si el mapeo existe pero la URL no responde, revise:
+En Docker Desktop, `host-publisher-1` debe mostrar `6080`, `6081`, `6082`, `10000`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901`, `8081` y `8404`; los demás contenedores no deben mostrar bindings. Si el mapeo existe pero la URL no responde, revise:
 
 ```bash
 ./scripts/compose.sh logs --tail=200 desktop-chatgpt

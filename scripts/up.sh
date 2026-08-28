@@ -32,7 +32,11 @@ fi
 
 docker_compose config --quiet
 docker_compose up --build --detach --remove-orphans --force-recreate
-"$ROOT_DIR/scripts/check-runtime-ports.sh"
+if [[ "${PLANO_COMPOSE_PLATFORM_MODE:-}" == "mac-arm64" ]]; then
+  "$ROOT_DIR/scripts/check-publisher-ports.sh"
+else
+  "$ROOT_DIR/scripts/check-runtime-ports.sh"
+fi
 
 for url in \
   "http://${ACCESS_HOST}:${CONTROL_CENTER_PORT:-10000}/health" \
@@ -54,6 +58,19 @@ for url in \
   fi
 done
 
+if [[ "${PLANO_COMPOSE_PLATFORM_MODE:-}" == "mac-arm64" ]]; then
+  ready=0
+  for _ in $(seq 1 90); do
+    if curl -fsS "http://${ACCESS_HOST}:${HOST_PUBLISHER_STATS_PORT:-8404}/" >/dev/null 2>&1; then ready=1; break; fi
+    sleep 2
+  done
+  if [[ "$ready" -ne 1 ]]; then
+    echo "Publisher HAProxy no disponible en http://${ACCESS_HOST}:${HOST_PUBLISHER_STATS_PORT:-8404}/" >&2
+    docker_compose ps
+    exit 1
+  fi
+fi
+
 cat <<EOF
 
 Demo operativa:
@@ -65,6 +82,7 @@ Demo operativa:
   mitmweb:       http://${ACCESS_HOST}:${MITMPROXY_UI_PORT:-8081}
   Plano API:     http://${ACCESS_HOST}:${PLANO_PORT:-12000}
   Plano Admin:   http://${ACCESS_HOST}:${PLANO_ADMIN_PORT:-19901}/
+  HAProxy stats:  http://${ACCESS_HOST}:${HOST_PUBLISHER_STATS_PORT:-8404}/
 
 Contraseña noVNC:   ${VNC_PASSWORD:-plano-demo}
 Contraseña mitmweb: ${MITMWEB_PASSWORD:-plano-demo}
@@ -74,6 +92,9 @@ Configuración:
   Plano:                plano/config.local.yaml
   Política:             policy-guard/app.py
 
-Ejecute: ./scripts/diagnose.sh
+En Mac, Docker Desktop mostrará los puertos en host-publisher; los escritorios
+sin Port(s) es el estado seguro esperado.
+
+Ejecute: $([[ "${PLANO_COMPOSE_PLATFORM_MODE:-}" == "mac-arm64" ]] && echo './scripts/mac-diagnose.sh' || echo './scripts/diagnose.sh')
 Pruebas: ./scripts/smoke-test.sh
 EOF

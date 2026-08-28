@@ -22,6 +22,7 @@ Docker Server:  $server_os/$server_arch
 Docker context: ${context:-desconocido}
 Compose base:    $PLANO_COMPOSE_FILE
 Compose arm64:   $ROOT_DIR/docker-compose.mac-arm64.yml
+Publisher Mac:   $ROOT_DIR/docker-compose.mac-publisher.yml
 Proyecto:        $PLANO_COMPOSE_PROJECT_NAME
 EOF
 
@@ -43,11 +44,11 @@ if [[ "$server_arch" != "arm64" && "$server_arch" != "aarch64" && "${ALLOW_NON_M
   failures=$((failures + 1))
 fi
 
-"$ROOT_DIR/scripts/check-runtime-ports.sh" || failures=$((failures + 1))
+"$ROOT_DIR/scripts/check-publisher-ports.sh" || failures=$((failures + 1))
 
 echo
 echo "=== Arquitecturas de imágenes ==="
-for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok; do
+for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok host-publisher; do
   container_id="$(docker_compose ps -aq "$service" 2>/dev/null | head -n 1 || true)"
   if [[ -z "$container_id" ]]; then
     printf 'ERROR %-24s no creado\n' "$service" >&2

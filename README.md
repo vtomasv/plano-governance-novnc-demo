@@ -17,11 +17,16 @@ La demo incluye un modo local determinista, que no requiere credenciales ni cons
 ## 2. Arquitectura de red
 
 ```text
-Navegador del operador
+Navegador del operador (Mac)
    |
-   +-- http://127.0.0.1:6080  noVNC / escritorio ChatGPT
-   +-- http://127.0.0.1:6081  noVNC / escritorio Claude
-   +-- http://127.0.0.1:6082  noVNC / escritorio Grok
+   +-- 127.0.0.1:6080/6081/6082
+                  |
+       host-publisher / HAProxy
+       único contenedor con PortBindings
+       TCP passthrough; sin red egress
+          |        |        |
+       ChatGPT   Claude    Grok
+       noVNC:6080 interno
                   |
           Chromium + extensión
           CA raíz explícitamente confiada
@@ -47,7 +52,7 @@ Plano -- OTLP/gRPC --> Jaeger :4317 --> UI :16686
 proxy/policy logs --> decisión, regla, proveedor y SHA-256 truncado; nunca prompt completo
 ```
 
-La topología normal usa tres redes. `control` y `upstream-sim` son internas; solo `proxy-interceptor` y Plano se conectan a `egress`. Los escritorios no comparten esa red, de modo que no pueden alcanzar directamente Internet ni el upstream simulado. Plano soporta filtros en listeners de modelo y corta el flujo antes del proveedor cuando el filtro devuelve un `4xx`.[1] El listener de modelo mantiene una API compatible con los formatos OpenAI y cubre `/v1/chat/completions`, `/v1/responses` y `/v1/messages`.[2]
+La topología Mac usa cuatro redes. `control` y `upstream-sim` son internas; solo `proxy-interceptor` y Plano se conectan a `egress`. `host-publisher` se conecta a `control`, `upstream-sim` y a la red de publicación, pero **no** a `egress`. Los escritorios permanecen únicamente en `control`, sin bindings ni salida directa. En Docker Desktop es correcto que la columna de puertos esté vacía para `desktop-chatgpt`, `desktop-claude` y `desktop-grok`: los dieciséis bindings aparecen exclusivamente en `host-publisher`. Plano soporta filtros en listeners de modelo y corta el flujo antes del proveedor cuando el filtro devuelve un `4xx`.[1] El listener de modelo mantiene una API compatible con los formatos OpenAI y cubre `/v1/chat/completions`, `/v1/responses` y `/v1/messages`.[2]
 
 noVNC necesita un servidor VNC y un puente WebSocket; esta demo fija noVNC 1.7.0 y usa `websockify` delante de `x11vnc`.[3] [4]
 
@@ -102,7 +107,7 @@ chmod +x scripts/*.sh
 ./scripts/smoke-test.sh
 ```
 
-`mac-up.sh` exige Docker Server `linux/arm64`, fuerza el override [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml), comprueba doce imágenes arm64 y falla si falta cualquiera de los quince bindings. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
+`mac-up.sh` exige Docker Server `linux/arm64`, combina [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml) con [`docker-compose.mac-publisher.yml`](docker-compose.mac-publisher.yml), comprueba trece imágenes arm64 y falla si falta cualquiera de los dieciséis bindings del publisher único. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
 
 En Linux use `./scripts/up.sh`. Los scripts PowerShell se conservan únicamente como soporte secundario para Windows, no como ruta de macOS.
 
@@ -123,8 +128,9 @@ Los accesos predeterminados son:
 | Interfaz directa del agente | `http://127.0.0.1:10600` | No aplica |
 | Jaeger | `http://127.0.0.1:16686` | No aplica |
 | mitmweb | `http://127.0.0.1:8081` | `MITMWEB_PASSWORD` en `.env` |
+| HAProxy stats | `http://127.0.0.1:8404` | Solo loopback |
 
-De forma predeterminada, tanto `VNC_PASSWORD` como `MITMWEB_PASSWORD` valen **`plano-demo`**. Para cambiar mitmweb, edite `.env` y ejecute `docker compose up -d --force-recreate proxy-interceptor`.
+De forma predeterminada, tanto `VNC_PASSWORD` como `MITMWEB_PASSWORD` valen **`plano-demo`**. Para cambiar mitmweb, edite `.env` y ejecute `./scripts/mac-up.sh`; así se conserva el perfil publisher de Mac.
 
 Para detener conservando perfiles y CA:
 
@@ -145,6 +151,9 @@ Después del arranque, abra **Control Center** en `http://127.0.0.1:10000` o eje
 ```bash
 ./scripts/check-runtime-ports.sh
 ./scripts/diagnose.sh
+# En Mac M3 use en su lugar:
+./scripts/check-publisher-ports.sh
+./scripts/mac-diagnose.sh
 ```
 
 En un Mac Apple Silicon use `./scripts/mac-diagnose.sh`. En PowerShell/Windows use `./scripts/diagnose.ps1`.
@@ -250,7 +259,7 @@ Ejecute:
 
 La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-bindings-fix.txt`](artifacts/smoke-test-bindings-fix.txt).
 
-Para Apple Silicon se construyeron las doce imágenes como `linux/arm64`, se verificaron quince bindings y se repitieron las 23 pruebas funcionales sobre el runtime arm64. Docker selecciona variantes de un manifest multi-plataforma según la arquitectura del host; el override de Mac lo hace explícito y evita emulación amd64.[7] La evidencia está en [`artifacts/mac-arm64-validation.txt`](artifacts/mac-arm64-validation.txt) y [`artifacts/mac-arm64-smoke-test.txt`](artifacts/mac-arm64-smoke-test.txt).
+Para Apple Silicon se construyeron trece imágenes `linux/arm64` y se verificaron dieciséis bindings concentrados en `host-publisher`, mientras once servicios internos conservaron `PortBindings={}`. HAProxy usa resolución DNS dinámica de Docker y modo TCP, por lo que el upgrade WebSocket, SSE, TLS passthrough y gRPC se preservan sin reescritura.[7] [10] [11] La ejecución funcional obtuvo 23/23 pruebas y un handshake WebSocket `101`; consulte [`artifacts/mac-publisher-validation.txt`](artifacts/mac-publisher-validation.txt), [`artifacts/host-publisher-smoke-test.txt`](artifacts/host-publisher-smoke-test.txt) y [`artifacts/host-publisher-visual-validation.md`](artifacts/host-publisher-visual-validation.md).
 
 Para comprobar que el proveedor no fue llamado:
 
@@ -285,9 +294,11 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 ├── docker-compose.yml
 ├── docker-compose.real-api.yml
 ├── docker-compose.mac-arm64.yml
+├── docker-compose.mac-publisher.yml
 ├── .env.example
 ├── Makefile
 ├── scripts/
+│   ├── check-publisher-ports.sh
 │   ├── check-runtime-ports.sh
 │   ├── compose.sh
 │   ├── diagnose.ps1
@@ -301,8 +312,11 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 │   ├── up.ps1
 │   ├── up.sh
 │   ├── validate.sh
-│   ├── validate_compose.py
+│   ├── validate_mac_arm64.py
+│   ├── validate_mac_publisher.py
 │   └── down.sh
+├── host-publisher/
+│   └── haproxy.cfg
 ├── control-center/
 ├── plano/
 │   ├── Dockerfile
@@ -330,3 +344,5 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 [7]: https://docs.docker.com/build/building/multi-platform/ "Docker Docs — Multi-platform builds"
 [8]: https://docs.docker.com/desktop/setup/install/mac-install/ "Docker Docs — Install Docker Desktop on Mac"
 [9]: https://docs.docker.com/engine/network/port-publishing/ "Docker Docs — Port publishing and mapping"
+[10]: https://www.haproxy.com/documentation/haproxy-configuration-tutorials/proxying-essentials/dns-resolution/ "HAProxy — DNS resolution"
+[11]: https://docs.haproxy.org/3.2/configuration.html "HAProxy 3.2 Configuration Manual"

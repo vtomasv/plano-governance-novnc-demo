@@ -12,7 +12,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-app = FastAPI(title="Plano Governance Demo Control Center", version="1.1.0")
+app = FastAPI(title="Plano Governance Demo Control Center", version="1.2.0")
 STATIC_DIR = Path(__file__).parent / "static"
 STARTED_AT = time.time()
 
@@ -106,6 +106,17 @@ HTTP_TARGETS: dict[str, dict[str, Any]] = {
         "healthy_detail": "Interfaz activa; autenticación requerida",
     },
 }
+
+if os.getenv("INCLUDE_HOST_PUBLISHER", "false").lower() == "true":
+    HTTP_TARGETS["host_publisher"] = {
+        "label": "Publisher de host / HAProxy",
+        "url": "http://host-publisher:8404/",
+        "public_port_env": "HOST_PUBLISHER_STATS_PORT",
+        "public_port_default": 8404,
+        "public_path": "/",
+        "group": "observability",
+        "healthy_detail": "Publisher único activo; backends y estadísticas disponibles",
+    }
 
 
 def public_port(item: dict[str, Any]) -> int:
@@ -227,6 +238,7 @@ async def config() -> dict[str, Any]:
         "plano_config_file": "plano/config.local.yaml",
         "port_config_file": ".env",
         "policy_source": "policy-guard/app.py",
-        "apply_command": "docker compose up -d --build --force-recreate",
+        "apply_command": "./scripts/mac-up.sh" if os.getenv("INCLUDE_HOST_PUBLISHER", "false").lower() == "true" else "./scripts/up.sh",
+        "publication_mode": "single-haproxy" if os.getenv("INCLUDE_HOST_PUBLISHER", "false").lower() == "true" else "direct-bindings",
         "hostname": socket.gethostname(),
     }

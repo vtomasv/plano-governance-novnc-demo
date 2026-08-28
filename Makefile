@@ -22,10 +22,10 @@ status:
 	./scripts/compose.sh ps
 
 ports:
-	./scripts/check-runtime-ports.sh
+	@if [ "$$(uname -s)" = "Darwin" ] && [ "$$(uname -m)" = "arm64" ]; then ./scripts/check-publisher-ports.sh; else ./scripts/check-runtime-ports.sh; fi
 
 diagnose:
-	./scripts/diagnose.sh
+	@if [ "$$(uname -s)" = "Darwin" ] && [ "$$(uname -m)" = "arm64" ]; then ./scripts/mac-diagnose.sh; else ./scripts/diagnose.sh; fi
 
 mac-diagnose:
 	./scripts/mac-diagnose.sh

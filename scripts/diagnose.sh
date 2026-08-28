@@ -3,6 +3,11 @@ set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+
+if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" && "${PLANO_MAC_DIAG_DISPATCHED:-0}" != "1" ]]; then
+  exec env PLANO_MAC_DIAG_DISPATCHED=1 "$ROOT_DIR/scripts/mac-diagnose.sh"
+fi
+
 # shellcheck source=scripts/docker-lib.sh
 source "$ROOT_DIR/scripts/docker-lib.sh"
 init_docker_command

@@ -1,0 +1,108 @@
+# Perfil de publicación para Docker Desktop en macOS.
+# Los servicios internos no publican puertos; HAProxy es el único borde del host.
+services:
+  control-center:
+    ports: !reset []
+    environment:
+      INCLUDE_HOST_PUBLISHER: "true"
+      HOST_PUBLISHER_STATS_PORT: ${HOST_PUBLISHER_STATS_PORT:-8404}
+
+  policy-guard:
+    ports: !reset []
+
+  provider-sim:
+    ports: !reset []
+
+  provider-web-sim:
+    ports: !reset []
+
+  jaeger:
+    ports: !reset []
+
+  plano:
+    ports: !reset []
+
+  governed-agent:
+    ports: !reset []
+
+  proxy-interceptor:
+    ports: !reset []
+
+  desktop-chatgpt:
+    ports: !reset []
+
+  desktop-claude:
+    ports: !reset []
+
+  desktop-grok:
+    ports: !reset []
+
+  host-publisher:
+    image: haproxy:3.2.22-alpine@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
+    platform: linux/arm64
+    restart: unless-stopped
+    depends_on:
+      control-center:
+        condition: service_healthy
+      policy-guard:
+        condition: service_healthy
+      provider-sim:
+        condition: service_healthy
+      provider-web-sim:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
+      plano:
+        condition: service_healthy
+      governed-agent:
+        condition: service_healthy
+      proxy-interceptor:
+        condition: service_healthy
+      desktop-chatgpt:
+        condition: service_healthy
+      desktop-claude:
+        condition: service_healthy
+      desktop-grok:
+        condition: service_healthy
+    user: haproxy
+    volumes:
+      - ./host-publisher/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "127.0.0.1:${CONTROL_CENTER_PORT:-10000}:10000"
+      - "127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}:6080"
+      - "127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}:6081"
+      - "127.0.0.1:${GROK_NOVNC_PORT:-6082}:6082"
+      - "127.0.0.1:${PLANO_PORT:-12000}:12000"
+      - "127.0.0.1:${PLANO_AGENT_PORT:-8001}:8001"
+      - "127.0.0.1:${PLANO_ADMIN_PORT:-19901}:19901"
+      - "127.0.0.1:${POLICY_GUARD_PORT:-10500}:10500"
+      - "127.0.0.1:${PROVIDER_SIM_PORT:-10501}:10501"
+      - "127.0.0.1:${PROVIDER_TLS_PORT:-18443}:18443"
+      - "127.0.0.1:${GOVERNED_AGENT_PORT:-10600}:10600"
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
+      - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"
+      - "127.0.0.1:${MITMPROXY_UI_PORT:-8081}:8081"
+      - "127.0.0.1:${HOST_PUBLISHER_STATS_PORT:-8404}:8404"
+    networks:
+      - control
+      - upstream-sim
+      - publish
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  publish:
+    driver: bridge

@@ -51,6 +51,7 @@ Preflight macOS Apple Silicon:
   Plataforma build: $DOCKER_DEFAULT_PLATFORM
   Compose base:     $PLANO_COMPOSE_FILE
   Compose arm64:    $ROOT_DIR/docker-compose.mac-arm64.yml
+  Publisher Mac:    $ROOT_DIR/docker-compose.mac-publisher.yml
 EOF
 
 # Elimina contenedores obsoletos del mismo proyecto; conserva perfiles y CA.
@@ -73,7 +74,8 @@ if command -v lsof >/dev/null 2>&1; then
     "${OTLP_GRPC_PORT:-4317}" \
     "${OTLP_HTTP_PORT:-4318}" \
     "${MITMPROXY_UI_PORT:-8081}" \
-    "${PROVIDER_TLS_PORT:-18443}"; do
+    "${PROVIDER_TLS_PORT:-18443}" \
+    "${HOST_PUBLISHER_STATS_PORT:-8404}"; do
     if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then
       echo "ERROR: el puerto $port ya está ocupado:" >&2
       lsof -nP -iTCP:"$port" -sTCP:LISTEN >&2 || true
@@ -86,11 +88,12 @@ fi
 pull_external_arm64_images() {
   docker_engine pull --platform linux/arm64 nginx:1.28.0-alpine@sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5
   docker_engine pull --platform linux/arm64 jaegertracing/all-in-one:1.68.0@sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a
+  docker_engine pull --platform linux/arm64 haproxy:3.2.22-alpine@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
 }
 
 verify_container_architectures() {
   local service container_id image_id image_arch failures=0
-  for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok; do
+  for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok host-publisher; do
     container_id="$(docker_compose ps -aq "$service" 2>/dev/null | head -n 1 || true)"
     if [[ -z "$container_id" ]]; then
       echo "ERROR: no se creó $service." >&2
@@ -114,7 +117,7 @@ pull_external_arm64_images
 if [[ "${MAC_VALIDATE_ONLY:-0}" == "1" ]]; then
   docker_compose build --pull
   docker_compose create --force-recreate
-  "$ROOT_DIR/scripts/check-runtime-ports.sh"
+  "$ROOT_DIR/scripts/check-publisher-ports.sh"
   verify_container_architectures
   echo "Validación macOS/arm64 completada sin iniciar la pila."
   exit 0
@@ -128,4 +131,5 @@ cat <<EOF
 
 Validación macOS M3: OK
 Abra Control Center: http://127.0.0.1:${CONTROL_CENTER_PORT:-10000}/
+Estado HAProxy:      http://127.0.0.1:${HOST_PUBLISHER_STATS_PORT:-8404}/
 EOF

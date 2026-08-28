@@ -31,14 +31,20 @@ chmod +x scripts/*.sh
 | Control | Comportamiento |
 |---|---|
 | Plataforma | Fuerza `linux/arm64` |
-| Compose | Combina solo `docker-compose.yml` y `docker-compose.mac-arm64.yml` |
+| Compose | Combina `docker-compose.yml`, `docker-compose.mac-arm64.yml` y `docker-compose.mac-publisher.yml` |
 | Estado anterior | Elimina contenedores obsoletos del mismo proyecto |
 | Puertos ocupados | Los detecta con `lsof` antes de construir |
-| Imágenes | Comprueba que cada imagen sea arm64 |
-| Bindings | Comprueba directamente `HostConfig.PortBindings` |
+| Imágenes | Comprueba trece imágenes arm64, incluido HAProxy |
+| Bindings | Exige dieciséis bindings únicamente en `host-publisher` y ninguno en los servicios internos |
 | Interfaces | Espera Control Center, Plano Admin y los tres noVNC |
 
 La primera compilación del escritorio Xfce/Chromium descarga numerosos paquetes; las siguientes reutilizan la caché de Docker.
+
+### Qué debe mostrar Docker Desktop
+
+En la columna **Port(s)**, `desktop-chatgpt`, `desktop-claude`, `desktop-grok`, Plano y los demás servicios internos deben aparecer **sin puertos**. Esto ya no indica un fallo: todos los bindings estarán concentrados en `host-publisher-1`. Allí deben verse `6080`, `6081`, `6082`, `10000`, `12000`, `19901`, `8081`, `16686` y los demás puertos operativos.
+
+HAProxy trabaja en modo TCP, por lo que no termina TLS ni modifica HTTP, SSE, gRPC o WebSocket. El publisher no pertenece a la red `egress`; solo puede alcanzar backends explícitos de `control` y `upstream-sim` mediante su configuración.[4][5]
 
 > No use el botón **Run** de una imagen ni `docker compose run`. Tampoco combine manualmente el archivo de `dev/`, ya que ese override elimina deliberadamente los bindings para un sandbox Linux restringido.
 
@@ -54,6 +60,7 @@ La primera compilación del escritorio Xfce/Chromium descarga numerosos paquetes
 | Plano/Envoy Admin | `http://127.0.0.1:19901/` |
 | mitmweb | `http://127.0.0.1:8081/` |
 | Jaeger | `http://127.0.0.1:16686/` |
+| HAProxy stats | `http://127.0.0.1:8404/` |
 
 Las contraseñas predeterminadas de noVNC y mitmweb son `plano-demo`; se cambian en `.env` mediante `VNC_PASSWORD` y `MITMWEB_PASSWORD`.
 
@@ -64,7 +71,7 @@ Las contraseñas predeterminadas de noVNC y mitmweb son `plano-demo`; se cambian
 ./scripts/smoke-test.sh
 ```
 
-El diagnóstico debe mostrar **15 bindings** y todas las imágenes como `linux/arm64`. La suite funcional debe terminar en `Resultado: 23 PASS, 0 FAIL`.
+El diagnóstico debe mostrar **16 bindings en `host-publisher`**, **cero bindings directos en once servicios internos** y trece imágenes `linux/arm64`. La suite funcional debe terminar en `Resultado: 23 PASS, 0 FAIL`.
 
 Para guardar un diagnóstico compartible:
 
@@ -77,11 +84,12 @@ El archivo no contiene tokens ni cuerpos de prompts, pero conviene revisarlo ant
 
 ## 5. Recuperación
 
-Si Docker Desktop todavía muestra contenedores sin puertos:
+Si Docker Desktop muestra los escritorios sin puertos, primero compruebe `host-publisher-1`: ese es el estado esperado. Si `host-publisher-1` tampoco muestra bindings, recréelo:
 
 ```bash
 ./scripts/down.sh
 ./scripts/mac-up.sh
+./scripts/check-publisher-ports.sh
 ```
 
 Si el arranque informa que un puerto está ocupado, identifique el proceso y cambie el puerto correspondiente en `.env`:
@@ -96,10 +104,12 @@ No cambie los puertos internos de los contenedores; modifique únicamente los va
 
 ## 6. Evidencia de compatibilidad
 
-La versión publicada fue construida para `linux/arm64` bajo emulación QEMU en un host de validación amd64. Se verificaron doce imágenes arm64, quince bindings, Chromium/noVNC, Plano, mitmweb, TLS interceptado, streaming y las veintitrés pruebas funcionales. Los resultados están en `artifacts/mac-arm64-validation.txt` y `artifacts/mac-arm64-smoke-test.txt`.
+La versión publicada fue construida para `linux/arm64` bajo emulación QEMU en un host de validación amd64. Se verificaron trece imágenes arm64 y dieciséis bindings concentrados en HAProxy. En una ejecución funcional equivalente se comprobaron las 23 políticas, el upgrade WebSocket `101`, una sesión noVNC visual, streaming SSE, TLS interceptado y mitmweb. Los resultados están en `artifacts/mac-publisher-validation.txt`, `artifacts/host-publisher-smoke-test.txt` y `artifacts/host-publisher-visual-validation.md`.
 
 ## Referencias
 
 [1]: https://docs.docker.com/desktop/setup/install/mac-install/ "Install Docker Desktop on Mac"
 [2]: https://docs.docker.com/build/building/multi-platform/ "Multi-platform builds"
 [3]: https://docs.docker.com/engine/network/port-publishing/ "Port publishing and mapping"
+[4]: https://www.haproxy.com/documentation/haproxy-configuration-tutorials/proxying-essentials/dns-resolution/ "HAProxy — DNS resolution"
+[5]: https://docs.haproxy.org/3.2/configuration.html "HAProxy 3.2 Configuration Manual"

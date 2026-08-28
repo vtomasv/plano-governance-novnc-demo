@@ -21,6 +21,7 @@ required = {
     "desktop-chatgpt",
     "desktop-claude",
     "desktop-grok",
+    "host-publisher",
 }
 
 errors: list[str] = []
@@ -32,7 +33,7 @@ for name in sorted(required):
     if service.get("platform") != "linux/arm64":
         errors.append(f"{name}: platform={service.get('platform')!r}; esperado 'linux/arm64'")
 
-for name in ("provider-web-sim", "jaeger"):
+for name in ("provider-web-sim", "jaeger", "host-publisher"):
     image = services.get(name, {}).get("image", "")
     if "@sha256:" not in image:
         errors.append(f"{name}: la imagen externa no está fijada por digest arm64")

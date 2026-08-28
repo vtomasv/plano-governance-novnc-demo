@@ -7,10 +7,11 @@ cd "$ROOT_DIR"
 source "$ROOT_DIR/scripts/docker-lib.sh"
 init_docker_command
 
-if [[ -f .env ]]; then
+PLANO_ENV_FILE="${PLANO_ENV_FILE:-$ROOT_DIR/.env}"
+if [[ -f "$PLANO_ENV_FILE" ]]; then
   set -a
-  # shellcheck disable=SC1091
-  source .env
+  # shellcheck disable=SC1090
+  source "$PLANO_ENV_FILE"
   set +a
 fi
 

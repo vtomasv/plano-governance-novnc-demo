@@ -52,6 +52,7 @@ docker_compose_mac_arm64() {
     --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
     -f "$PLANO_COMPOSE_FILE" \
     -f "${PLANO_DEMO_ROOT}/docker-compose.mac-arm64.yml" \
+    -f "${PLANO_DEMO_ROOT}/docker-compose.mac-publisher.yml" \
     "$@"
 }
 
