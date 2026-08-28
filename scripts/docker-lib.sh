@@ -26,6 +26,10 @@ init_docker_command() {
 
 docker_compose() {
   # `-f` explícito tiene precedencia sobre COMPOSE_FILE y evita overrides heredados.
+  if [[ "${PLANO_COMPOSE_PLATFORM_MODE:-}" == "mac-arm64" ]]; then
+    docker_compose_mac_arm64 "$@"
+    return
+  fi
   "${DOCKER[@]}" compose \
     --project-directory "$PLANO_DEMO_ROOT" \
     --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
@@ -39,6 +43,15 @@ docker_compose_real_api() {
     --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
     -f "$PLANO_COMPOSE_FILE" \
     -f "${PLANO_DEMO_ROOT}/docker-compose.real-api.yml" \
+    "$@"
+}
+
+docker_compose_mac_arm64() {
+  "${DOCKER[@]}" compose \
+    --project-directory "$PLANO_DEMO_ROOT" \
+    --project-name "$PLANO_COMPOSE_PROJECT_NAME" \
+    -f "$PLANO_COMPOSE_FILE" \
+    -f "${PLANO_DEMO_ROOT}/docker-compose.mac-arm64.yml" \
     "$@"
 }
 

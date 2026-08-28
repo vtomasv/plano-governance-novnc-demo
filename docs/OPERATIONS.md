@@ -4,24 +4,17 @@
 
 El despliegue soportado se inicia mediante los scripts que fijan explícitamente el Compose principal.
 
-En Linux o macOS:
+En **macOS Apple Silicon M1/M2/M3/M4**:
 
 ```bash
-cp -n .env.example .env
-./scripts/up.sh
-./scripts/diagnose.sh
-```
-
-En Windows/Docker Desktop, desde PowerShell:
-
-```powershell
 git pull
-.\scripts\down.ps1
-.\scripts\up.ps1
-.\scripts\diagnose.ps1
+chmod +x scripts/*.sh
+./scripts/down.sh
+./scripts/mac-up.sh
+./scripts/mac-diagnose.sh
 ```
 
-Estos comandos usan `--force-recreate`, comprueban `HostConfig.PortBindings` y abortan si Docker omite un puerto. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
+En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios. En Mac, `mac-up.sh` combina el Compose principal con `docker-compose.mac-arm64.yml`, exige imágenes `linux/arm64`, usa `--force-recreate`, comprueba `HostConfig.PortBindings` y aborta si Docker omite un puerto. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
 
 | Puerto predeterminado | Servicio | Uso |
 |---:|---|---|
@@ -114,19 +107,15 @@ En PowerShell:
 .\scripts\diagnose.ps1
 ```
 
-Para recuperar la pila en Docker Desktop:
-
-```powershell
-.\scripts\down.ps1
-.\scripts\up.ps1
-```
-
-Para recuperar en Linux o macOS:
+Para recuperar la pila en un Mac M3:
 
 ```bash
-./scripts/compose.sh down --remove-orphans
-./scripts/up.sh
+./scripts/down.sh
+./scripts/mac-up.sh
+./scripts/mac-diagnose.sh
 ```
+
+Para recuperar en Linux use `./scripts/up.sh`; en Windows use `scripts/down.ps1` y `scripts/up.ps1`.
 
 Los resultados esperados terminan respectivamente en `6080`, `6081` y `6082`; además deben aparecer `10000`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901` y `8081`. Si el mapeo existe pero la URL no responde, revise:
 

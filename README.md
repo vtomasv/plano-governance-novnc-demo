@@ -89,24 +89,22 @@ El proxy recibe una copia de la clave privada de esa CA únicamente dentro de su
 
 Los servicios principales están en [`docker-compose.yml`](docker-compose.yml). El archivo construye los escritorios, el agente, el filtro, el proveedor local, el proxy, la imagen offline de Plano y el inicializador de certificados; además fija las imágenes de Jaeger y Nginx.
 
-En Linux o macOS:
+### macOS Apple Silicon — ruta principal
+
+En un Mac M1/M2/M3/M4 con Docker Desktop para Apple Silicon:
 
 ```bash
-cp -n .env.example .env
-./scripts/up.sh
+git pull
+chmod +x scripts/*.sh
+./scripts/down.sh
+./scripts/mac-up.sh
+./scripts/mac-diagnose.sh
 ./scripts/smoke-test.sh
 ```
 
-En **Windows con Docker Desktop**, abra PowerShell en la raíz del repositorio:
+`mac-up.sh` exige Docker Server `linux/arm64`, fuerza el override [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml), comprueba doce imágenes arm64 y falla si falta cualquiera de los quince bindings. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
 
-```powershell
-git pull
-.\scripts\down.ps1
-.\scripts\up.ps1
-.\scripts\diagnose.ps1
-```
-
-Si la política de ejecución local bloquea scripts, use `powershell -ExecutionPolicy Bypass -File .\scripts\up.ps1`. Los scripts fuerzan `docker-compose.yml`, ignoran un `COMPOSE_FILE` heredado, recrean los contenedores y fallan si falta un solo binding.
+En Linux use `./scripts/up.sh`. Los scripts PowerShell se conservan únicamente como soporte secundario para Windows, no como ruta de macOS.
 
 > No utilice **Run** sobre una imagen, `docker compose run` ni solamente **Start** sobre contenedores creados sin puertos. Los bindings se asignan al crear/recrear el contenedor.
 
@@ -149,7 +147,7 @@ Después del arranque, abra **Control Center** en `http://127.0.0.1:10000` o eje
 ./scripts/diagnose.sh
 ```
 
-En PowerShell use `./scripts/diagnose.ps1`.
+En un Mac Apple Silicon use `./scripts/mac-diagnose.sh`. En PowerShell/Windows use `./scripts/diagnose.ps1`.
 
 El diagnóstico muestra el estado de contenedores, los mapeos efectivos, el `PortBindings` registrado por Docker, los archivos Compose de origen, la respuesta HTTP de cada interfaz y las credenciales configuradas localmente. Los puertos se cambian en `.env`; `BIND_ADDRESS=127.0.0.1` evita publicar superficies sensibles en la red.
 
@@ -252,6 +250,8 @@ Ejecute:
 
 La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-bindings-fix.txt`](artifacts/smoke-test-bindings-fix.txt).
 
+Para Apple Silicon se construyeron las doce imágenes como `linux/arm64`, se verificaron quince bindings y se repitieron las 23 pruebas funcionales sobre el runtime arm64. Docker selecciona variantes de un manifest multi-plataforma según la arquitectura del host; el override de Mac lo hace explícito y evita emulación amd64.[7] La evidencia está en [`artifacts/mac-arm64-validation.txt`](artifacts/mac-arm64-validation.txt) y [`artifacts/mac-arm64-smoke-test.txt`](artifacts/mac-arm64-smoke-test.txt).
+
 Para comprobar que el proveedor no fue llamado:
 
 ```bash
@@ -284,6 +284,7 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 .
 ├── docker-compose.yml
 ├── docker-compose.real-api.yml
+├── docker-compose.mac-arm64.yml
 ├── .env.example
 ├── Makefile
 ├── scripts/
@@ -292,6 +293,8 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 │   ├── diagnose.ps1
 │   ├── diagnose.sh
 │   ├── docker-lib.sh
+│   ├── mac-diagnose.sh
+│   ├── mac-up.sh
 │   ├── down.ps1
 │   ├── generate-ca.sh
 │   ├── smoke-test.sh
@@ -324,3 +327,6 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 [4]: https://novnc.com/noVNC/docs/EMBEDDING.html "noVNC — Embedding and deploying"
 [5]: https://github.com/katanemo/plano/blob/main/demos/getting_started/llm_gateway/config.yaml "Plano — LLM gateway providers"
 [6]: https://github.com/katanemo/plano/tree/main/demos/llm_routing/chatgpt_subscription "Plano — ChatGPT Subscription Routing"
+[7]: https://docs.docker.com/build/building/multi-platform/ "Docker Docs — Multi-platform builds"
+[8]: https://docs.docker.com/desktop/setup/install/mac-install/ "Docker Docs — Install Docker Desktop on Mac"
+[9]: https://docs.docker.com/engine/network/port-publishing/ "Docker Docs — Port publishing and mapping"

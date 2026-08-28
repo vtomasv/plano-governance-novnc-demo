@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.0 — 2026-08-27
+
+Esta versión convierte **macOS Apple Silicon** en una plataforma validada de forma explícita y corrige la recomendación errónea de PowerShell para un Mac M3.
+
+| Cambio | Resultado |
+|---|---|
+| Arranque Mac | Nuevo `scripts/mac-up.sh`, invocado automáticamente por `up.sh` en Darwin/arm64 |
+| Plataforma | Override `docker-compose.mac-arm64.yml` con `linux/arm64` en todos los servicios |
+| Imágenes externas | Manifests arm64 fijados para Nginx y Jaeger |
+| Preflight | Verifica `uname`, Docker Server, contexto, puertos ocupados y Compose efectivo |
+| Diagnóstico | Nuevo `scripts/mac-diagnose.sh` con arquitectura y bindings por servicio |
+| Evidencia | Doce imágenes arm64, quince bindings y 23/23 pruebas funcionales |
+| Documentación | Guía dedicada `docs/MACOS-APPLE-SILICON.md`; PowerShell deja de ser la ruta principal |
+
 ## 1.1.1 — 2026-08-27
 
 Esta revisión corrige el caso observado en Docker Desktop donde los contenedores aparecían activos pero solo Plano conservaba puertos publicados.

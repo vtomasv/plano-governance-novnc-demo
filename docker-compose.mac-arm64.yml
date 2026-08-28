@@ -1,0 +1,61 @@
+# Override oficial para macOS Apple Silicon (M1/M2/M3/M4).
+# Se aplica automáticamente mediante scripts/mac-up.sh.
+services:
+  cert-init:
+    platform: linux/arm64
+  control-center:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  policy-guard:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  provider-sim:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  provider-web-sim:
+    platform: linux/arm64
+    image: nginx:1.28.0-alpine@sha256:e8552debd77891036e8928d45f6f6e6d9eee56ce720668c0cdd723f963c3a5c5
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  jaeger:
+    platform: linux/arm64
+    image: jaegertracing/all-in-one:1.68.0@sha256:6e1935c81a7ecfe7a2355e7ddcf418ec0d751fd30e8f1b4e9b0df25d6040ee2a
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  plano:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 60s
+  governed-agent:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  proxy-interceptor:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
+  desktop-chatgpt:
+    platform: linux/arm64
+  desktop-claude:
+    platform: linux/arm64
+  desktop-grok:
+    platform: linux/arm64

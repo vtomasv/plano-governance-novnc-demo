@@ -1,7 +1,10 @@
-.PHONY: up down purge test logs status ports diagnose certs validate
+.PHONY: up mac-up down purge test logs status ports diagnose mac-diagnose certs validate
 
 up:
 	./scripts/up.sh
+
+mac-up:
+	./scripts/mac-up.sh
 
 down:
 	./scripts/down.sh
@@ -23,6 +26,9 @@ ports:
 
 diagnose:
 	./scripts/diagnose.sh
+
+mac-diagnose:
+	./scripts/mac-diagnose.sh
 
 certs:
 	./scripts/generate-ca.sh ./certs

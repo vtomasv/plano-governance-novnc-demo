@@ -7,6 +7,9 @@
 |---|---:|---|
 | Tests unitarios del filtro | 10/10 PASS | `python3 -m pytest -q policy-guard/test_policy.py` |
 | Suite end-to-end ampliada | 23/23 PASS | `artifacts/smoke-test-bindings-fix.txt` |
+| Runtime `linux/arm64` | 23/23 PASS | `artifacts/mac-arm64-smoke-test.txt` |
+| Imágenes Apple Silicon | 12/12 arm64 | `artifacts/mac-arm64-validation.txt` |
+| Bindings Apple Silicon | 15/15 PASS | `artifacts/mac-arm64-validation.txt` |
 | Validación declarativa de puertos | PASS | `scripts/validate_compose.py` |
 | PortBindings creados por Docker | PASS | `artifacts/runtime-port-regression.txt` |
 | Control Center | 11/11 saludables | Validado por `artifacts/smoke-test-bindings-fix.txt` |
@@ -43,12 +46,14 @@ control-center    127.0.0.1:10000 -> 10000/tcp
 
 La ejecución funcional dentro del sandbox requirió el override interno debido a las limitaciones de bridge/netfilter anidado del kernel. Esa ejecución equivalente completó 23 pruebas y el Control Center informó 11 de 11 componentes saludables.
 
-## Operación recomendada
+## Operación recomendada en Mac M3
 
 ```bash
-cp -n .env.example .env
-./scripts/up.sh
-./scripts/diagnose.sh
+git pull
+chmod +x scripts/*.sh
+./scripts/down.sh
+./scripts/mac-up.sh
+./scripts/mac-diagnose.sh
 ./scripts/smoke-test.sh
 ```
 
