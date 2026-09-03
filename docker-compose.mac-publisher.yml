@@ -47,33 +47,9 @@ services:
     image: haproxy:3.2.22-alpine@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
     platform: linux/arm64
     restart: unless-stopped
-    depends_on:
-      control-center:
-        condition: service_healthy
-      audit-dashboard:
-        condition: service_healthy
-      policy-guard:
-        condition: service_healthy
-      provider-sim:
-        condition: service_healthy
-      provider-web-sim:
-        condition: service_healthy
-      jaeger:
-        condition: service_healthy
-      plano:
-        condition: service_healthy
-      governed-agent:
-        condition: service_healthy
-      proxy-interceptor:
-        condition: service_healthy
-      desktop-chatgpt:
-        condition: service_healthy
-      desktop-claude:
-        condition: service_healthy
-      desktop-grok:
-        condition: service_healthy
-      desktop-gemini:
-        condition: service_healthy
+    # No usar `depends_on: condition: service_healthy` aquí. HAProxy puede
+    # arrancar antes que los backends y marcarlos UP mediante DNS/healthchecks.
+    # Un backend lento nunca debe impedir que Docker cree el único publisher.
     user: haproxy
     volumes:
       - ./host-publisher/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro

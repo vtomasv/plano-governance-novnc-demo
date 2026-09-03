@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 — 2026-09-03
+
+Este hotfix corrige el caso donde `host-publisher` quedaba en estado `Created` y ninguna interfaz era visible cuando un backend tardaba en alcanzar `healthy`.
+
+| Cambio | Resultado |
+|---|---|
+| Causa raíz | Eliminado `depends_on: condition: service_healthy` del publisher |
+| Arranque | `mac-up.sh` crea y valida HAProxy antes de iniciar los backends |
+| Fail-fast | Exige servicio, 18 bindings y estado `running` antes de continuar |
+| DNS dinámico | HAProxy incorpora los backends cuando se vuelven disponibles |
+| Regresión | El validador prohíbe dependencias futuras en `host-publisher` |
+| Prueba | Publisher iniciado sin backends; 18 bindings y stats HTTP 200 |
+
 ## 2.0.0 — 2026-09-03
 
 Esta versión incorpora auditoría correlacionada de contenido y corrige el ciclo asíncrono de las cuentas web gratuitas.

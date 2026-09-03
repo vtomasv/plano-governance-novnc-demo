@@ -108,7 +108,7 @@ chmod +x scripts/*.sh
 ./scripts/smoke-test.sh
 ```
 
-`mac-up.sh` exige Docker Server `linux/arm64`, combina [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml) con [`docker-compose.mac-publisher.yml`](docker-compose.mac-publisher.yml), comprueba quince imágenes arm64 y falla si falta cualquiera de los dieciocho bindings del publisher único. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
+`mac-up.sh` exige Docker Server `linux/arm64`, combina [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml) con [`docker-compose.mac-publisher.yml`](docker-compose.mac-publisher.yml), **crea e inicia primero `host-publisher`**, comprueba quince imágenes arm64 y falla si falta cualquiera de sus dieciocho bindings. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
 
 En Linux use `./scripts/up.sh`. Los scripts PowerShell se conservan únicamente como soporte secundario para Windows, no como ruta de macOS.
 

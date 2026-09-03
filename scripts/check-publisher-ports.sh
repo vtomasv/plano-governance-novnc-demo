@@ -22,7 +22,13 @@ if [[ -z "$publisher_id" ]]; then
 fi
 
 bindings="$(docker_engine inspect "$publisher_id" --format '{{json .HostConfig.PortBindings}}')"
+status="$(docker_engine inspect "$publisher_id" --format '{{.State.Status}}')"
 failures=0
+
+if [[ "${REQUIRE_PUBLISHER_RUNNING:-1}" == "1" && "$status" != "running" ]]; then
+  echo "ERROR: host-publisher existe pero su estado es '$status'; se esperaba 'running'." >&2
+  failures=$((failures + 1))
+fi
 
 check_publisher_binding() {
   local target_port="$1" expected_host_port="$2" label="$3"
@@ -52,6 +58,16 @@ check_publisher_binding 4317 "${OTLP_GRPC_PORT:-4317}" "OTLP gRPC"
 check_publisher_binding 4318 "${OTLP_HTTP_PORT:-4318}" "OTLP HTTP"
 check_publisher_binding 8081 "${MITMPROXY_UI_PORT:-8081}" "mitmweb"
 check_publisher_binding 8404 "${HOST_PUBLISHER_STATS_PORT:-8404}" "HAProxy stats"
+
+if [[ "${PUBLISHER_ONLY:-0}" == "1" ]]; then
+  if (( failures > 0 )); then
+    echo "Validación temprana del publisher: $failures fallo(s)." >&2
+    exit 1
+  fi
+  echo
+  echo "Publisher creado con 18 bindings: OK (estado=$status)"
+  exit 0
+fi
 
 echo
 echo "Comprobando ausencia de publicación directa:"

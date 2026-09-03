@@ -116,10 +116,32 @@ verify_container_architectures() {
 
 pull_external_arm64_images
 
+# Materializar primero el único borde del host. Sin dependencias de salud,
+# HAProxy puede quedar escuchando mientras los backends terminan de arrancar.
+if ! docker_compose config --services | grep -Fxq 'host-publisher'; then
+  echo "ERROR: el Compose efectivo no contiene host-publisher." >&2
+  echo "Archivos esperados: docker-compose.yml + docker-compose.mac-arm64.yml + docker-compose.mac-publisher.yml" >&2
+  exit 1
+fi
+
+docker_compose create --force-recreate host-publisher
+PUBLISHER_ONLY=1 REQUIRE_PUBLISHER_RUNNING=0 \
+  "$ROOT_DIR/scripts/check-publisher-ports.sh"
+docker_compose start host-publisher
+publisher_id="$(docker_compose ps -q host-publisher)"
+if [[ -z "$publisher_id" || "$(docker_engine inspect "$publisher_id" --format '{{.State.Status}}')" != "running" ]]; then
+  echo "ERROR: host-publisher no pudo iniciar." >&2
+  docker_compose ps -a host-publisher >&2 || true
+  docker_compose logs --tail=100 host-publisher >&2 || true
+  exit 1
+fi
+
+echo "host-publisher creado y ejecutándose antes de iniciar los backends."
+
 if [[ "${MAC_VALIDATE_ONLY:-0}" == "1" ]]; then
   docker_compose build --pull
   docker_compose create --force-recreate
-  "$ROOT_DIR/scripts/check-publisher-ports.sh"
+  REQUIRE_PUBLISHER_RUNNING=0 "$ROOT_DIR/scripts/check-publisher-ports.sh"
   verify_container_architectures
   echo "Validación macOS/arm64 completada sin iniciar la pila."
   exit 0

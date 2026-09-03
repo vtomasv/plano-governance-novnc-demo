@@ -35,7 +35,8 @@ chmod +x scripts/*.sh
 | Estado anterior | Elimina contenedores obsoletos del mismo proyecto |
 | Puertos ocupados | Los detecta con `lsof` antes de construir |
 | Imágenes | Comprueba quince imágenes arm64, incluido HAProxy |
-| Bindings | Exige dieciocho bindings únicamente en `host-publisher` y ninguno en los servicios internos |
+| Bindings | Crea primero `host-publisher` y exige sus dieciocho bindings antes de iniciar los backends |
+| Publisher | Exige estado `running`; no espera `service_healthy` de todos los backends |
 | Interfaces | Espera Control Center, dashboard de auditoría, Plano Admin y los cuatro noVNC |
 
 La primera compilación del escritorio Xfce/Chromium descarga numerosos paquetes; las siguientes reutilizan la caché de Docker.
@@ -44,7 +45,7 @@ La primera compilación del escritorio Xfce/Chromium descarga numerosos paquetes
 
 En la columna **Port(s)**, `desktop-chatgpt`, `desktop-claude`, `desktop-grok`, `desktop-gemini`, Plano y los demás servicios internos deben aparecer **sin puertos**. Esto ya no indica un fallo: todos los bindings estarán concentrados en `host-publisher-1`. Allí deben verse `6080`, `6081`, `6082`, `6083`, `10000`, `10700`, `12000`, `19901`, `8081`, `16686` y los demás puertos operativos.
 
-HAProxy trabaja en modo TCP, por lo que no termina TLS ni modifica HTTP, SSE, gRPC o WebSocket. El publisher no pertenece a la red `egress`; solo puede alcanzar backends explícitos de `control` y `upstream-sim` mediante su configuración.[4][5]
+HAProxy se crea e inicia antes que el resto de la pila. No usa `depends_on: service_healthy`: sus resolvers y healthchecks incorporan cada backend cuando queda disponible. De este modo, un escritorio lento no puede dejar el único publisher en estado `Created`. HAProxy trabaja en modo TCP, por lo que no termina TLS ni modifica HTTP, SSE, gRPC o WebSocket. El publisher no pertenece a la red `egress`; solo puede alcanzar backends explícitos de `control` y `upstream-sim` mediante su configuración.[4][5]
 
 > No use el botón **Run** de una imagen ni `docker compose run`. Tampoco combine manualmente el archivo de `dev/`, ya que ese override elimina deliberadamente los bindings para un sandbox Linux restringido.
 

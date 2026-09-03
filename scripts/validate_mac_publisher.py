@@ -62,6 +62,8 @@ else:
         errors.append(f"host-publisher sin redes requeridas: {sorted(required_networks - networks)}")
     if "egress" in networks:
         errors.append("host-publisher no debe estar conectado a egress")
+    if publisher.get("depends_on"):
+        errors.append("host-publisher no debe depender de la salud de backends")
 
 internal_services = {
     "control-center",
@@ -103,3 +105,4 @@ print(f"- host-publisher: {len(expected)} bindings en 127.0.0.1")
 print(f"- servicios sin bindings directos: {len(internal_services)}")
 print("- escritorios: solo red control")
 print("- egress: únicamente plano y proxy-interceptor")
+print("- publisher: sin dependencia de salud de backends")
