@@ -4,7 +4,7 @@
 
 ## Decisión
 
-La demo combinará dos rutas complementarias. La ruta **determinista y totalmente verificable** enviará solicitudes compatibles con OpenAI, Anthropic y xAI a un listener de modelo de Plano, con proveedores locales simulados y streaming SSE. La ruta **de cuentas web gratuitas** abrirá ChatGPT, Claude y Grok en tres escritorios Chromium independientes expuestos por noVNC. Estos escritorios no tendrán salida directa: su único camino será un proxy TLS explícito, con una CA raíz de laboratorio instalada deliberadamente en el sistema y en el almacén NSS de Chromium. El proxy consultará a Plano antes de permitir una solicitud que contenga contenido de conversación; una extensión local mostrará de forma legible la misma decisión en la interfaz.
+La demo combina dos rutas complementarias. La ruta **determinista y totalmente verificable** envía solicitudes compatibles con OpenAI, Anthropic y xAI a un listener de modelo de Plano, con proveedores locales simulados —incluido Gemini— y streaming SSE. La ruta **de cuentas web gratuitas** abre ChatGPT, Claude, Grok y Gemini en cuatro escritorios Chromium independientes expuestos por noVNC. Estos escritorios no tienen salida directa: su único camino es un proxy TLS explícito, con una CA raíz de laboratorio instalada deliberadamente en el sistema y en el almacén NSS de Chromium. El proxy consulta a Plano antes de permitir una solicitud de conversación; una extensión muestra la decisión, reenvía únicamente prompts autorizados y correlaciona la respuesta visible en el dashboard.
 
 No se almacenarán contraseñas, cookies ni tokens en el repositorio. El usuario iniciará sesión manualmente cuando quiera probar cuentas web. Los endpoints internos de estas interfaces web se consideran privados y cambiantes; por ello la validación automática no dependerá de ellos. Plano seguirá siendo el **único punto de decisión**: si Plano o su filtro no están disponibles, el proxy fallará cerrado para solicitudes de conversación.
 
@@ -23,14 +23,14 @@ La demo implementará los dos primeros enfoques y excluirá explícitamente el t
 ```text
 Navegador del operador
         |
-        +--> noVNC :6080/:6081/:6082
+        +--> noVNC :6080/:6081/:6082/:6083
                   |
-       +----------+-----------+
-       |          |           |
- Chromium     Chromium     Chromium
- ChatGPT       Claude        Grok
-       \          |          /
-        \    red interna    /
+       +--------+--------+--------+
+       |        |        |        |
+ Chromium Chromium Chromium Chromium
+ ChatGPT   Claude    Grok    Gemini
+       \        |        |       /
+        \       red interna      /
          +-- sin egress ---+
                  |
         proxy-interceptor TLS
@@ -59,7 +59,7 @@ El filtro inspeccionará el historial completo de roles de usuario y los campos 
 
 > No es posible realizar preguntas sobre el presidente de Argentina.
 
-La política incluirá además detecciones mínimas de secretos para demostrar prevención de pérdida de datos. Los logs no conservarán el cuerpo completo del prompt; registrarán identificador, proveedor, regla, decisión y huellas criptográficas truncadas.
+La política incluirá además detecciones mínimas de secretos para demostrar prevención de pérdida de datos. Los logs operativos no conservan el cuerpo completo del prompt; registran identificador, proveedor, regla, decisión y huellas criptográficas. El dashboard persiste una copia **redactada** del prompt y resultado durante una retención limitada, detrás de autenticación, para la finalidad explícita de esta demo de auditoría.
 
 ## Límites
 

@@ -28,8 +28,11 @@ PLANO_COMPOSE_PLATFORM_MODE=mac-arm64 \
 python3 scripts/validate_mac_publisher.py /tmp/plano-governance-compose-mac-arm64.json
 python3 scripts/validate_mac_arm64.py /tmp/plano-governance-compose-mac-arm64.json
 
-python3 -m pytest -q policy-guard/test_policy.py
+(cd policy-guard && python3 -m pytest -q test_policy.py)
+(cd audit-dashboard && python3 -m pytest -q test_app.py)
+(cd governed-agent && python3 -m pytest -q test_app.py)
 python3 -m py_compile \
+  audit-dashboard/app.py \
   policy-guard/app.py \
   provider-sim/app.py \
   governed-agent/app.py \

@@ -16,15 +16,26 @@ services:
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:11080/health', timeout=2)"]
 
+  audit-dashboard:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+
   policy-guard:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    environment:
+      AUDIT_URL: http://127.0.0.1:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
 
   provider-sim:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    environment:
+      AUDIT_URL: http://127.0.0.1:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
 
   provider-web-sim:
     network_mode: host
@@ -52,6 +63,8 @@ services:
     ports: !reset []
     environment:
       PLANO_BASE_URL: http://127.0.0.1:12000
+      AUDIT_URL: http://127.0.0.1:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
       MAX_PROMPT_CHARS: 12000
 
   proxy-interceptor:
@@ -62,17 +75,23 @@ services:
       - "chatgpt.demo.local:127.0.0.1"
       - "claude.demo.local:127.0.0.1"
       - "grok.demo.local:127.0.0.1"
+      - "gemini.demo.local:127.0.0.1"
     environment:
       PLANO_POLICY_URL: http://127.0.0.1:12000/v1/chat/completions
       POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
       MITMWEB_PASSWORD: ${MITMWEB_PASSWORD:-plano-demo}
-      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
+      AUDIT_BASE_URL: http://127.0.0.1:10700
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
+      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,gemini.google.com,bard.google.com,generativelanguage.googleapis.com,chatgpt.demo.local,claude.demo.local,grok.demo.local,gemini.demo.local
       MAX_INSPECTION_BODY_BYTES: 2097152
 
   desktop-chatgpt:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    extra_hosts:
+      - "governed-agent:127.0.0.1"
+      - "audit-dashboard:127.0.0.1"
     environment:
       PROVIDER: chatgpt
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -86,6 +105,9 @@ services:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    extra_hosts:
+      - "governed-agent:127.0.0.1"
+      - "audit-dashboard:127.0.0.1"
     environment:
       PROVIDER: claude
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -99,6 +121,9 @@ services:
     network_mode: host
     networks: !reset []
     ports: !reset []
+    extra_hosts:
+      - "governed-agent:127.0.0.1"
+      - "audit-dashboard:127.0.0.1"
     environment:
       PROVIDER: grok
       VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
@@ -107,3 +132,19 @@ services:
       START_URL: http://127.0.0.1:10600/?provider=grok
       VNC_PORT: 5902
       NOVNC_PORT: 6082
+
+  desktop-gemini:
+    network_mode: host
+    networks: !reset []
+    ports: !reset []
+    extra_hosts:
+      - "governed-agent:127.0.0.1"
+      - "audit-dashboard:127.0.0.1"
+    environment:
+      PROVIDER: gemini
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://127.0.0.1:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+      START_URL: http://127.0.0.1:10600/?provider=gemini
+      VNC_PORT: 5903
+      NOVNC_PORT: 6083

@@ -24,6 +24,8 @@ CONTROL_CENTER_PORT="${CONTROL_CENTER_PORT:-10000}"
 CHATGPT_NOVNC_PORT="${CHATGPT_NOVNC_PORT:-6080}"
 CLAUDE_NOVNC_PORT="${CLAUDE_NOVNC_PORT:-6081}"
 GROK_NOVNC_PORT="${GROK_NOVNC_PORT:-6082}"
+GEMINI_NOVNC_PORT="${GEMINI_NOVNC_PORT:-6083}"
+AUDIT_DASHBOARD_PORT="${AUDIT_DASHBOARD_PORT:-10700}"
 PLANO_PORT="${PLANO_PORT:-12000}"
 PLANO_AGENT_PORT="${PLANO_AGENT_PORT:-8001}"
 PLANO_ADMIN_PORT="${PLANO_ADMIN_PORT:-19901}"
@@ -58,6 +60,8 @@ for item in \
   'desktop-chatgpt:6080' \
   'desktop-claude:6080' \
   'desktop-grok:6080' \
+  'desktop-gemini:6080' \
+  'audit-dashboard:10700' \
   'plano:12000' \
   'plano:8001' \
   'plano:9901' \
@@ -105,6 +109,8 @@ check_url 'Control Center' "http://$host_for_url:$CONTROL_CENTER_PORT/health" ||
 check_url 'ChatGPT noVNC' "http://$host_for_url:$CHATGPT_NOVNC_PORT/vnc.html" || failures=$((failures+1))
 check_url 'Claude noVNC' "http://$host_for_url:$CLAUDE_NOVNC_PORT/vnc.html" || failures=$((failures+1))
 check_url 'Grok noVNC' "http://$host_for_url:$GROK_NOVNC_PORT/vnc.html" || failures=$((failures+1))
+check_url 'Gemini noVNC' "http://$host_for_url:$GEMINI_NOVNC_PORT/vnc.html" || failures=$((failures+1))
+check_url 'Audit Dashboard' "http://$host_for_url:$AUDIT_DASHBOARD_PORT/health" || failures=$((failures+1))
 check_url 'Plano Gateway' "http://$host_for_url:$PLANO_PORT/healthz" || failures=$((failures+1))
 check_url 'Plano Admin' "http://$host_for_url:$PLANO_ADMIN_PORT/ready" || failures=$((failures+1))
 check_url 'Policy Guard' "http://$host_for_url:$POLICY_GUARD_PORT/health" || failures=$((failures+1))
@@ -127,11 +133,14 @@ Control Center: http://$host_for_url:$CONTROL_CENTER_PORT/
 ChatGPT noVNC:  http://$host_for_url:$CHATGPT_NOVNC_PORT/vnc.html?autoconnect=1&resize=remote
 Claude noVNC:   http://$host_for_url:$CLAUDE_NOVNC_PORT/vnc.html?autoconnect=1&resize=remote
 Grok noVNC:     http://$host_for_url:$GROK_NOVNC_PORT/vnc.html?autoconnect=1&resize=remote
+Gemini noVNC:   http://$host_for_url:$GEMINI_NOVNC_PORT/vnc.html?autoconnect=1&resize=remote
+Auditoría LLM:  http://$host_for_url:$AUDIT_DASHBOARD_PORT/
 Plano Admin:    http://$host_for_url:$PLANO_ADMIN_PORT/
 mitmweb:        http://$host_for_url:$MITMPROXY_UI_PORT/
 Jaeger:         http://$host_for_url:$JAEGER_UI_PORT/
 
 Contraseña noVNC:  $VNC_PASSWORD
+Dashboard:          ${AUDIT_DASHBOARD_USER:-admin} / ${AUDIT_DASHBOARD_PASSWORD:-plano-demo}
 Contraseña mitmweb: $MITMWEB_PASSWORD
 EOF
 

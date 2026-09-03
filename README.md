@@ -1,31 +1,31 @@
 # Demo de gobierno de prompts con Plano, noVNC y TLS controlado
 
 **Autor:** Tomas Vera (`@vtomasv`)  
-**Versión validada:** 27 de agosto de 2026  
+**Versión validada:** 3 de septiembre de 2026
 **Plano:** 0.4.36, imagen derivada de `katanemo/plano:0.4.36`
 
 ## 1. Objetivo del escenario
 
-Esta demo crea tres terminales gráficas independientes —**ChatGPT**, **Claude** y **Grok**— accesibles mediante noVNC. Cada terminal contiene Chromium, una CA raíz de laboratorio explícitamente instalada, una extensión de prevalidación y una salida HTTPS obligatoria a través de un proxy controlado. **Plano es el único componente que decide** si un prompt de conversación puede continuar.
+Esta demo crea cuatro terminales gráficas independientes —**ChatGPT**, **Claude**, **Grok** y **Gemini**— accesibles mediante noVNC. Cada terminal contiene Chromium, una CA raíz de laboratorio explícitamente instalada, una extensión de prevalidación y una salida HTTPS obligatoria a través de un proxy controlado. **Plano es el único componente que decide** si un prompt de conversación puede continuar.
 
 La regla principal bloquea preguntas sobre el presidente de Argentina. Reconoce el contexto semántico básico y variantes ortográficas como `Milei`, `Miley`, `Mliey` y una transposición o edición cercana. Ante una infracción, Plano devuelve:
 
 > No es posible realizar preguntas sobre el presidente de Argentina.
 
-La demo incluye un modo local determinista, que no requiere credenciales ni consume APIs, y un override opcional para las APIs reales de OpenAI, Anthropic y xAI. La interfaz también permite abrir los sitios oficiales de las cuentas web gratuitas; el inicio de sesión es siempre manual y las credenciales no se almacenan en el proyecto.
+La demo incluye un modo local determinista, que no requiere credenciales ni consume APIs, y un override opcional para las APIs reales de OpenAI, Anthropic y xAI. La interfaz también permite abrir los sitios oficiales de las cuentas web gratuitas; el inicio de sesión es siempre manual y las credenciales no se almacenan en el proyecto. El **dashboard de auditoría** correlaciona cada prompt con su decisión y resultado, agrupa por tópicos y muestra latencia, modelo, streaming, tool calls, regla aplicada y metadata operativa después de redactar secretos.
 
 ## 2. Arquitectura de red
 
 ```text
 Navegador del operador (Mac)
    |
-   +-- 127.0.0.1:6080/6081/6082
+   +-- 127.0.0.1:6080/6081/6082/6083/10700
                   |
        host-publisher / HAProxy
        único contenedor con PortBindings
        TCP passthrough; sin red egress
           |        |        |
-       ChatGPT   Claude    Grok
+       ChatGPT   Claude    Grok   Gemini
        noVNC:6080 interno
                   |
           Chromium + extensión
@@ -47,12 +47,13 @@ Navegador del operador (Mac)
      HTTP 403          provider-sim :10501
      mensaje fijo      o proveedor real
 
-Observabilidad:
+Observabilidad y auditoría:
 Plano -- OTLP/gRPC --> Jaeger :4317 --> UI :16686
-proxy/policy logs --> decisión, regla, proveedor y SHA-256 truncado; nunca prompt completo
+agente/filtro/proxy/proveedor --> audit-dashboard :10700 --> SQLite persistente
+logs operativos --> decisión, regla, proveedor y SHA-256; sin cuerpo del prompt
 ```
 
-La topología Mac usa cuatro redes. `control` y `upstream-sim` son internas; solo `proxy-interceptor` y Plano se conectan a `egress`. `host-publisher` se conecta a `control`, `upstream-sim` y a la red de publicación, pero **no** a `egress`. Los escritorios permanecen únicamente en `control`, sin bindings ni salida directa. En Docker Desktop es correcto que la columna de puertos esté vacía para `desktop-chatgpt`, `desktop-claude` y `desktop-grok`: los dieciséis bindings aparecen exclusivamente en `host-publisher`. Plano soporta filtros en listeners de modelo y corta el flujo antes del proveedor cuando el filtro devuelve un `4xx`.[1] El listener de modelo mantiene una API compatible con los formatos OpenAI y cubre `/v1/chat/completions`, `/v1/responses` y `/v1/messages`.[2]
+La topología Mac usa cuatro redes. `control` y `upstream-sim` son internas; solo `proxy-interceptor` y Plano se conectan a `egress`. `host-publisher` se conecta a `control`, `upstream-sim` y a la red de publicación, pero **no** a `egress`. Los escritorios permanecen únicamente en `control`, sin bindings ni salida directa. En Docker Desktop es correcto que la columna de puertos esté vacía para `desktop-chatgpt`, `desktop-claude`, `desktop-grok`, `desktop-gemini` y los backends: los **dieciocho bindings** aparecen exclusivamente en `host-publisher`. Plano soporta filtros en listeners de modelo y corta el flujo antes del proveedor cuando el filtro devuelve un `4xx`.[1] El listener de modelo mantiene una API compatible con los formatos OpenAI y cubre `/v1/chat/completions`, `/v1/responses` y `/v1/messages`.[2]
 
 noVNC necesita un servidor VNC y un puente WebSocket; esta demo fija noVNC 1.7.0 y usa `websockify` delante de `x11vnc`.[3] [4]
 
@@ -107,7 +108,7 @@ chmod +x scripts/*.sh
 ./scripts/smoke-test.sh
 ```
 
-`mac-up.sh` exige Docker Server `linux/arm64`, combina [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml) con [`docker-compose.mac-publisher.yml`](docker-compose.mac-publisher.yml), comprueba trece imágenes arm64 y falla si falta cualquiera de los dieciséis bindings del publisher único. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
+`mac-up.sh` exige Docker Server `linux/arm64`, combina [`docker-compose.mac-arm64.yml`](docker-compose.mac-arm64.yml) con [`docker-compose.mac-publisher.yml`](docker-compose.mac-publisher.yml), comprueba quince imágenes arm64 y falla si falta cualquiera de los dieciocho bindings del publisher único. `up.sh` también detecta automáticamente un Mac arm64 y delega a esta ruta. Consulte la [guía específica para macOS Apple Silicon](docs/MACOS-APPLE-SILICON.md).
 
 En Linux use `./scripts/up.sh`. Los scripts PowerShell se conservan únicamente como soporte secundario para Windows, no como ruta de macOS.
 
@@ -121,6 +122,8 @@ Los accesos predeterminados son:
 | ChatGPT noVNC | `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
 | Claude noVNC | `http://127.0.0.1:6081/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
 | Grok noVNC | `http://127.0.0.1:6082/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
+| Gemini noVNC | `http://127.0.0.1:6083/vnc.html?autoconnect=1&resize=remote` | `VNC_PASSWORD` en `.env` |
+| **Dashboard de auditoría LLM** | `http://127.0.0.1:10700` | `AUDIT_DASHBOARD_USER` / `AUDIT_DASHBOARD_PASSWORD` |
 | Plano API | `http://127.0.0.1:12000` | Sin clave en modo local |
 | Plano/Envoy Admin | `http://127.0.0.1:19901` | Solo loopback |
 | Policy Guard | `http://127.0.0.1:10500` | No aplica |
@@ -130,7 +133,7 @@ Los accesos predeterminados son:
 | mitmweb | `http://127.0.0.1:8081` | `MITMWEB_PASSWORD` en `.env` |
 | HAProxy stats | `http://127.0.0.1:8404` | Solo loopback |
 
-De forma predeterminada, tanto `VNC_PASSWORD` como `MITMWEB_PASSWORD` valen **`plano-demo`**. Para cambiar mitmweb, edite `.env` y ejecute `./scripts/mac-up.sh`; así se conserva el perfil publisher de Mac.
+De forma predeterminada, `VNC_PASSWORD`, `MITMWEB_PASSWORD` y `AUDIT_DASHBOARD_PASSWORD` valen **`plano-demo`**; el usuario del dashboard es **`admin`**. Para cambiar mitmweb, edite `.env` y ejecute `./scripts/mac-up.sh`; así se conserva el perfil publisher de Mac.
 
 Para detener conservando perfiles y CA:
 
@@ -162,7 +165,7 @@ El diagnóstico muestra el estado de contenedores, los mapeos efectivos, el `Por
 
 > No use `dev/docker-compose.sandbox-internal.yml` en su estación. Es un workaround interno para kernels sin bridge/netfilter anidado y elimina deliberadamente la sección `ports`.
 
-La guía detallada de operación y solución de problemas está en [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+La guía detallada de operación está en [`docs/OPERATIONS.md`](docs/OPERATIONS.md). El modelo de eventos, filtros, privacidad y diagnóstico de cuentas gratuitas se documenta en [`docs/AUDIT-DASHBOARD.md`](docs/AUDIT-DASHBOARD.md).
 
 ## 5. Configuración de Plano
 
@@ -172,9 +175,9 @@ La configuración local está en [`plano/config.local.yaml`](plano/config.local.
 |---|---|
 | Listener LLM | `type: model`, puerto `12000`, filtro de entrada obligatorio |
 | Listener de agentes | `type: agent`, puerto `8001`, agente `governed_chat_agent` |
-| Proveedores locales | `custom/local-chatgpt`, `custom/local-claude`, `custom/local-grok` |
+| Proveedores locales | `custom/local-chatgpt`, `custom/local-claude`, `custom/local-grok`, `custom/local-gemini` |
 | Proveedores reales opcionales | OpenAI, Anthropic y xAI en `plano/config.real-api.yaml` |
-| Alias | `chatgpt-demo`, `claude-demo`, `grok-demo`, `governed-default` |
+| Alias | `chatgpt-demo`, `claude-demo`, `grok-demo`, `gemini-demo`, `governed-default` |
 | Preferencias | chat general, análisis/redacción y estilo de actualidad |
 | Trazas | Muestreo 100 %, OTLP/gRPC hacia Jaeger |
 
@@ -220,7 +223,9 @@ Plano 0.4.36 incluye configuraciones oficiales para `openai/*`, `anthropic/*` y 
 
 [`proxy-interceptor/governance.py`](proxy-interceptor/governance.py) inspecciona únicamente solicitudes de conversación a los hosts gobernados. No envía cookies, cabeceras de autorización ni tokens de sesión al filtro. Si el cuerpo es opaco, demasiado grande o Plano está caído, la ruta sensible **falla cerrada**.
 
-La extensión de Chromium ubicada en [`desktop/extension/`](desktop/extension/) añade una prevalidación visible en las interfaces oficiales. El proxy sigue siendo el control efectivo de red; la extensión mejora la experiencia del usuario y no reemplaza el enforcement.
+La extensión de Chromium ubicada en [`desktop/extension/`](desktop/extension/) prevalida el **texto exacto del compositor**, reenvía el evento original solo después de recibir `allow`, confirma que el sitio consumió el prompt y observa la respuesta visible para completar el mismo `audit_id`. La corrección evita tomar por error el texto del botón o de toda la página. El proxy sigue siendo el control efectivo de red; la extensión mejora la experiencia y no reemplaza el enforcement.
+
+[`audit-dashboard/app.py`](audit-dashboard/app.py) persiste eventos correlacionados en SQLite, aplica redacción adicional antes de escribir, limita retención y volumen, expone filtros y exportación CSV, y requiere autenticación Basic para cualquier contenido. No persiste cookies, cabeceras `Authorization` ni credenciales de cuentas web.
 
 ## 7. Prompts de prueba y comportamiento esperado
 
@@ -257,9 +262,9 @@ Ejecute:
 ./scripts/smoke-test.sh
 ```
 
-La validación corregida obtuvo **23 PASS y 0 FAIL**. Además del gobierno de los tres modelos, cubre explícitamente los puertos noVNC `6080–6082`, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. El resultado completo está en [`artifacts/smoke-test-bindings-fix.txt`](artifacts/smoke-test-bindings-fix.txt).
+La validación actual obtuvo **34 PASS y 0 FAIL**; la prueba adicional del navegador obtuvo **2 PASS y 0 FAIL**. Además del gobierno de los cuatro modelos, cubre los puertos noVNC `6080–6083`, autenticación del dashboard, correlación prompt/resultado, tópicos y redacción de secretos, Control Center, Plano Admin, autenticación mitmweb con `MITMWEB_PASSWORD`, variantes adversariales, contexto multivuelta, prevención de fuga, streaming SSE, TLS permitido, TLS bloqueado y ausencia de llamadas upstream ante una denegación. Los resultados están en [`artifacts/audit-dashboard-smoke-test-final.txt`](artifacts/audit-dashboard-smoke-test-final.txt) y [`artifacts/free-web-fixture-test-final.txt`](artifacts/free-web-fixture-test-final.txt). Ejecute `./scripts/test-free-web-fixture.sh` para reproducir el ciclo autorización→submit→respuesta y el bloqueo previo al submit dentro del Chromium real del escritorio.
 
-Para Apple Silicon se construyeron trece imágenes `linux/arm64` y se verificaron dieciséis bindings concentrados en `host-publisher`, mientras once servicios internos conservaron `PortBindings={}`. HAProxy usa resolución DNS dinámica de Docker y modo TCP, por lo que el upgrade WebSocket, SSE, TLS passthrough y gRPC se preservan sin reescritura.[7] [10] [11] La ejecución funcional obtuvo 23/23 pruebas y un handshake WebSocket `101`; consulte [`artifacts/mac-publisher-validation.txt`](artifacts/mac-publisher-validation.txt), [`artifacts/host-publisher-smoke-test.txt`](artifacts/host-publisher-smoke-test.txt) y [`artifacts/host-publisher-visual-validation.md`](artifacts/host-publisher-visual-validation.md).
+Para Apple Silicon el perfil exige quince imágenes `linux/arm64` y verifica dieciocho bindings concentrados en `host-publisher`, mientras trece servicios internos conservan `PortBindings={}`. HAProxy usa resolución DNS dinámica de Docker y modo TCP, por lo que el upgrade WebSocket, SSE, TLS passthrough y gRPC se preservan sin reescritura.[7] [10] [11] La ejecución funcional actual obtuvo 34/34 controles end-to-end y 2/2 escenarios del Chromium real; consulte [`artifacts/audit-dashboard-smoke-test-final.txt`](artifacts/audit-dashboard-smoke-test-final.txt), [`artifacts/free-web-fixture-test-final.txt`](artifacts/free-web-fixture-test-final.txt) y [`artifacts/audit-dashboard-visual-validation.md`](artifacts/audit-dashboard-visual-validation.md).
 
 Para comprobar que el proveedor no fue llamado:
 
@@ -281,7 +286,7 @@ La captura [`artifacts/desktop-clean-final.png`](artifacts/desktop-clean-final.p
 
 Esta CA es exclusivamente de laboratorio. No debe instalarse globalmente en estaciones reales, distribuirse fuera del entorno ni reutilizarse. La clave privada debe almacenarse con permisos mínimos y rotarse; `make purge` elimina el volumen de la demo.
 
-Las interfaces web gratuitas de ChatGPT, Claude y Grok usan cookies, sesiones y endpoints privados que pueden cambiar. La demo abre los sitios oficiales y obliga el tráfico HTTPS a pasar por el proxy, pero no automatiza logins, no extrae cookies y no promete compatibilidad eterna con un endpoint web privado. Para una integración contractual y estable se deben usar las APIs oficiales gobernadas por el listener de Plano.
+Las interfaces web gratuitas de ChatGPT, Claude, Grok y Gemini usan cookies, sesiones y endpoints privados que pueden cambiar. La demo abre los sitios oficiales y obliga el tráfico HTTPS a pasar por el proxy, pero no automatiza logins, no extrae cookies y no promete compatibilidad eterna con un endpoint web privado. Para una integración contractual y estable se deben usar las APIs oficiales gobernadas por el listener de Plano.
 
 En producción deben añadirse autenticación de usuarios, gestión corporativa de certificados, HSM o secret manager, rotación, RBAC, aprobación de políticas, retención mínima, SIEM, límites de tasa, protección de la UI de observabilidad, alta disponibilidad y revisión legal. No se debe desactivar la validación TLS, intentar romper certificate pinning ni interceptar tráfico de usuarios sin autorización expresa.
 
@@ -309,6 +314,7 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 │   ├── down.ps1
 │   ├── generate-ca.sh
 │   ├── smoke-test.sh
+│   ├── test-free-web-fixture.sh
 │   ├── up.ps1
 │   ├── up.sh
 │   ├── validate.sh
@@ -318,6 +324,7 @@ Chromium usa `--no-sandbox` únicamente porque el navegador ya está aislado den
 ├── host-publisher/
 │   └── haproxy.cfg
 ├── control-center/
+├── audit-dashboard/             # API, SQLite y dashboard de contenido redactado
 ├── plano/
 │   ├── Dockerfile
 │   ├── config.local.yaml

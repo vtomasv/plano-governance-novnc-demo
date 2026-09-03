@@ -9,6 +9,12 @@ services:
       timeout: 15s
       retries: 30
       start_period: 30s
+  audit-dashboard:
+    platform: linux/arm64
+    healthcheck:
+      timeout: 15s
+      retries: 30
+      start_period: 30s
   policy-guard:
     platform: linux/arm64
     healthcheck:
@@ -58,4 +64,6 @@ services:
   desktop-claude:
     platform: linux/arm64
   desktop-grok:
+    platform: linux/arm64
+  desktop-gemini:
     platform: linux/arm64

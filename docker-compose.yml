@@ -60,6 +60,8 @@ services:
       CHATGPT_NOVNC_PORT: ${CHATGPT_NOVNC_PORT:-6080}
       CLAUDE_NOVNC_PORT: ${CLAUDE_NOVNC_PORT:-6081}
       GROK_NOVNC_PORT: ${GROK_NOVNC_PORT:-6082}
+      GEMINI_NOVNC_PORT: ${GEMINI_NOVNC_PORT:-6083}
+      AUDIT_DASHBOARD_PORT: ${AUDIT_DASHBOARD_PORT:-10700}
       PLANO_PORT: ${PLANO_PORT:-12000}
       PLANO_ADMIN_PORT: ${PLANO_ADMIN_PORT:-19901}
       POLICY_GUARD_PORT: ${POLICY_GUARD_PORT:-10500}
@@ -70,13 +72,34 @@ services:
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${CONTROL_CENTER_PORT:-10000}:10000"
 
+  audit-dashboard:
+    <<: *python-service
+    hostname: audit-dashboard
+    build:
+      context: ./audit-dashboard
+    environment:
+      AUDIT_DASHBOARD_USER: ${AUDIT_DASHBOARD_USER:-admin}
+      AUDIT_DASHBOARD_PASSWORD: ${AUDIT_DASHBOARD_PASSWORD:-plano-demo}
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
+      AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-7}
+      AUDIT_MAX_EVENTS: ${AUDIT_MAX_EVENTS:-10000}
+    volumes:
+      - audit-data:/data
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${AUDIT_DASHBOARD_PORT:-10700}:10700"
+
   policy-guard:
     <<: *python-service
     hostname: policy-guard
     build:
       context: ./policy-guard
+    depends_on:
+      audit-dashboard:
+        condition: service_healthy
     environment:
       LOG_PROMPT_BODIES: ${LOG_PROMPT_BODIES:-false}
+      AUDIT_URL: http://audit-dashboard:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${POLICY_GUARD_PORT:-10500}:10500"
 
@@ -85,6 +108,12 @@ services:
     hostname: provider-sim
     build:
       context: ./provider-sim
+    depends_on:
+      audit-dashboard:
+        condition: service_healthy
+    environment:
+      AUDIT_URL: http://audit-dashboard:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
     networks:
       - control
       - upstream-sim
@@ -110,6 +139,7 @@ services:
           - chatgpt.demo.local
           - claude.demo.local
           - grok.demo.local
+          - gemini.demo.local
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -182,8 +212,12 @@ services:
     depends_on:
       plano:
         condition: service_healthy
+      audit-dashboard:
+        condition: service_healthy
     environment:
       PLANO_BASE_URL: http://plano:12000
+      AUDIT_URL: http://audit-dashboard:10700/ingest
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
       MAX_PROMPT_CHARS: 12000
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${GOVERNED_AGENT_PORT:-10600}:10600"
@@ -197,11 +231,15 @@ services:
         condition: service_completed_successfully
       plano:
         condition: service_healthy
+      audit-dashboard:
+        condition: service_healthy
     environment:
       PLANO_POLICY_URL: http://plano:12000/v1/chat/completions
       POLICY_FAIL_MODE: ${POLICY_FAIL_MODE:-closed}
       MITMWEB_PASSWORD: ${MITMWEB_PASSWORD:-plano-demo}
-      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local
+      AUDIT_BASE_URL: http://audit-dashboard:10700
+      AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
+      GOVERNED_HOSTS: chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,gemini.google.com,bard.google.com,generativelanguage.googleapis.com,chatgpt.demo.local,claude.demo.local,grok.demo.local,gemini.demo.local
       MAX_INSPECTION_BODY_BYTES: 2097152
     volumes:
       - demo-certs:/certs:ro
@@ -256,6 +294,20 @@ services:
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${GROK_NOVNC_PORT:-6082}:6080"
 
+  desktop-gemini:
+    <<: *desktop
+    hostname: desktop-gemini
+    environment:
+      PROVIDER: gemini
+      VNC_PASSWORD: ${VNC_PASSWORD:-plano-demo}
+      PROXY_URL: http://proxy-interceptor:8080
+      CA_FILE: /certs/plano-demo-root-ca.crt
+    volumes:
+      - demo-certs:/certs:ro
+      - gemini-profile:/home/demo/.config/chromium
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${GEMINI_NOVNC_PORT:-6083}:6080"
+
 networks:
   control:
     internal: true
@@ -268,3 +320,5 @@ volumes:
   chatgpt-profile:
   claude-profile:
   grok-profile:
+  gemini-profile:
+  audit-data:

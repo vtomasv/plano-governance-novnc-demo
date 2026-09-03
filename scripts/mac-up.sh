@@ -64,12 +64,14 @@ if command -v lsof >/dev/null 2>&1; then
     "${CHATGPT_NOVNC_PORT:-6080}" \
     "${CLAUDE_NOVNC_PORT:-6081}" \
     "${GROK_NOVNC_PORT:-6082}" \
+    "${GEMINI_NOVNC_PORT:-6083}" \
     "${PLANO_PORT:-12000}" \
     "${PLANO_AGENT_PORT:-8001}" \
     "${PLANO_ADMIN_PORT:-19901}" \
     "${POLICY_GUARD_PORT:-10500}" \
     "${PROVIDER_SIM_PORT:-10501}" \
     "${GOVERNED_AGENT_PORT:-10600}" \
+    "${AUDIT_DASHBOARD_PORT:-10700}" \
     "${JAEGER_UI_PORT:-16686}" \
     "${OTLP_GRPC_PORT:-4317}" \
     "${OTLP_HTTP_PORT:-4318}" \
@@ -93,7 +95,7 @@ pull_external_arm64_images() {
 
 verify_container_architectures() {
   local service container_id image_id image_arch failures=0
-  for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok host-publisher; do
+  for service in cert-init control-center audit-dashboard policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok desktop-gemini host-publisher; do
     container_id="$(docker_compose ps -aq "$service" 2>/dev/null | head -n 1 || true)"
     if [[ -z "$container_id" ]]; then
       echo "ERROR: no se creó $service." >&2
@@ -131,5 +133,7 @@ cat <<EOF
 
 Validación macOS M3: OK
 Abra Control Center: http://127.0.0.1:${CONTROL_CENTER_PORT:-10000}/
+Dashboard auditoría: http://127.0.0.1:${AUDIT_DASHBOARD_PORT:-10700}/
+Gemini noVNC:       http://127.0.0.1:${GEMINI_NOVNC_PORT:-6083}/vnc.html?autoconnect=1&resize=remote
 Estado HAProxy:      http://127.0.0.1:${HOST_PUBLISHER_STATS_PORT:-8404}/
 EOF

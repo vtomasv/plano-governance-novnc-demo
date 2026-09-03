@@ -64,7 +64,7 @@ EOF
 runuser -u demo -- env DISPLAY=:1 HOME=/home/demo chromium \
   --user-data-dir=/home/demo/.config/chromium \
   --proxy-server="$PROXY_URL" \
-  '--proxy-bypass-list=localhost;127.0.0.1;governed-agent;plano;policy-guard;provider-sim' \
+  '--proxy-bypass-list=localhost;127.0.0.1;governed-agent;audit-dashboard;plano;policy-guard;provider-sim' \
   --disable-background-networking \
   --disable-component-update \
   --disable-default-apps \

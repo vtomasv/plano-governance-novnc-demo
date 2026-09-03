@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.0.0 — 2026-09-03
+
+Esta versión incorpora auditoría correlacionada de contenido y corrige el ciclo asíncrono de las cuentas web gratuitas.
+
+| Cambio | Resultado |
+|---|---|
+| Dashboard | Nueva UI autenticada en `10700` con prompt, resultado, regla, latencia, modelo, streaming, tool calls y metadata |
+| Tópicos | Clasificación local y agrupación por política, seguridad, programación, ciencia, finanzas, soporte, salud y redacción |
+| Correlación | `audit_id` estable entre agente, Policy Guard, proveedor, proxy TLS y extensión |
+| Privacidad | Redacción antes de persistir, retención de 7 días, límite de eventos y ausencia de cookies/Authorization |
+| Gemini | Cuarto escritorio noVNC en `6083`, modelo local, SAN TLS, proxy y extensión actualizados |
+| Free web | La extensión extrae solo el compositor, espera Plano, reenvía el submit autorizado y captura la respuesta DOM |
+| Errores | Estados explícitos `provider_send_not_confirmed` y `provider_response_timeout` en lugar de espera silenciosa |
+| Publisher Mac | Quince servicios arm64 declarados, dieciocho bindings en HAProxy y trece backends sin publicación directa |
+| Validación | 34/34 pruebas end-to-end, 2/2 pruebas del Chromium real y 17/17 pruebas unitarias |
+
 ## 1.3.0 — 2026-08-27
 
 Esta versión adopta la estrategia de **publisher único HAProxy** para macOS Apple Silicon. Los escritorios y servicios internos dejan de publicar puertos individualmente; Docker Desktop muestra todos los bindings en `host-publisher-1`.

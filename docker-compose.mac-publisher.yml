@@ -7,6 +7,9 @@ services:
       INCLUDE_HOST_PUBLISHER: "true"
       HOST_PUBLISHER_STATS_PORT: ${HOST_PUBLISHER_STATS_PORT:-8404}
 
+  audit-dashboard:
+    ports: !reset []
+
   policy-guard:
     ports: !reset []
 
@@ -37,12 +40,17 @@ services:
   desktop-grok:
     ports: !reset []
 
+  desktop-gemini:
+    ports: !reset []
+
   host-publisher:
     image: haproxy:3.2.22-alpine@sha256:cfb14fccb3ea107a99ea7d49716ede401466b6d6721409fb1503eea5a024c438
     platform: linux/arm64
     restart: unless-stopped
     depends_on:
       control-center:
+        condition: service_healthy
+      audit-dashboard:
         condition: service_healthy
       policy-guard:
         condition: service_healthy
@@ -64,6 +72,8 @@ services:
         condition: service_healthy
       desktop-grok:
         condition: service_healthy
+      desktop-gemini:
+        condition: service_healthy
     user: haproxy
     volumes:
       - ./host-publisher/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
@@ -72,6 +82,7 @@ services:
       - "127.0.0.1:${CHATGPT_NOVNC_PORT:-6080}:6080"
       - "127.0.0.1:${CLAUDE_NOVNC_PORT:-6081}:6081"
       - "127.0.0.1:${GROK_NOVNC_PORT:-6082}:6082"
+      - "127.0.0.1:${GEMINI_NOVNC_PORT:-6083}:6083"
       - "127.0.0.1:${PLANO_PORT:-12000}:12000"
       - "127.0.0.1:${PLANO_AGENT_PORT:-8001}:8001"
       - "127.0.0.1:${PLANO_ADMIN_PORT:-19901}:19901"
@@ -79,6 +90,7 @@ services:
       - "127.0.0.1:${PROVIDER_SIM_PORT:-10501}:10501"
       - "127.0.0.1:${PROVIDER_TLS_PORT:-18443}:18443"
       - "127.0.0.1:${GOVERNED_AGENT_PORT:-10600}:10600"
+      - "127.0.0.1:${AUDIT_DASHBOARD_PORT:-10700}:10700"
       - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
       - "127.0.0.1:${OTLP_GRPC_PORT:-4317}:4317"
       - "127.0.0.1:${OTLP_HTTP_PORT:-4318}:4318"

@@ -21,6 +21,7 @@ expected = {
     (6080, env_int("CHATGPT_NOVNC_PORT", 6080)),
     (6081, env_int("CLAUDE_NOVNC_PORT", 6081)),
     (6082, env_int("GROK_NOVNC_PORT", 6082)),
+    (6083, env_int("GEMINI_NOVNC_PORT", 6083)),
     (12000, env_int("PLANO_PORT", 12000)),
     (8001, env_int("PLANO_AGENT_PORT", 8001)),
     (19901, env_int("PLANO_ADMIN_PORT", 19901)),
@@ -28,6 +29,7 @@ expected = {
     (10501, env_int("PROVIDER_SIM_PORT", 10501)),
     (18443, env_int("PROVIDER_TLS_PORT", 18443)),
     (10600, env_int("GOVERNED_AGENT_PORT", 10600)),
+    (10700, env_int("AUDIT_DASHBOARD_PORT", 10700)),
     (16686, env_int("JAEGER_UI_PORT", 16686)),
     (4317, env_int("OTLP_GRPC_PORT", 4317)),
     (4318, env_int("OTLP_HTTP_PORT", 4318)),
@@ -63,6 +65,7 @@ else:
 
 internal_services = {
     "control-center",
+    "audit-dashboard",
     "policy-guard",
     "provider-sim",
     "provider-web-sim",
@@ -73,12 +76,13 @@ internal_services = {
     "desktop-chatgpt",
     "desktop-claude",
     "desktop-grok",
+    "desktop-gemini",
 }
 for name in sorted(internal_services):
     if services.get(name, {}).get("ports"):
         errors.append(f"{name} conserva publicación directa")
 
-for name in ("desktop-chatgpt", "desktop-claude", "desktop-grok"):
+for name in ("desktop-chatgpt", "desktop-claude", "desktop-grok", "desktop-gemini"):
     networks = set(services.get(name, {}).get("networks", {}))
     if networks != {"control"}:
         errors.append(f"{name} debe estar solo en control; actual={sorted(networks)}")

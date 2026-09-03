@@ -16,6 +16,8 @@ EXPECTED: dict[str, set[tuple[int, int]]] = {
     "desktop-chatgpt": {(6080, env_int("CHATGPT_NOVNC_PORT", 6080))},
     "desktop-claude": {(6080, env_int("CLAUDE_NOVNC_PORT", 6081))},
     "desktop-grok": {(6080, env_int("GROK_NOVNC_PORT", 6082))},
+    "desktop-gemini": {(6080, env_int("GEMINI_NOVNC_PORT", 6083))},
+    "audit-dashboard": {(10700, env_int("AUDIT_DASHBOARD_PORT", 10700))},
     "plano": {
         (12000, env_int("PLANO_PORT", 12000)),
         (8001, env_int("PLANO_AGENT_PORT", 8001)),

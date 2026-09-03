@@ -34,15 +34,15 @@ chmod +x scripts/*.sh
 | Compose | Combina `docker-compose.yml`, `docker-compose.mac-arm64.yml` y `docker-compose.mac-publisher.yml` |
 | Estado anterior | Elimina contenedores obsoletos del mismo proyecto |
 | Puertos ocupados | Los detecta con `lsof` antes de construir |
-| Imágenes | Comprueba trece imágenes arm64, incluido HAProxy |
-| Bindings | Exige dieciséis bindings únicamente en `host-publisher` y ninguno en los servicios internos |
-| Interfaces | Espera Control Center, Plano Admin y los tres noVNC |
+| Imágenes | Comprueba quince imágenes arm64, incluido HAProxy |
+| Bindings | Exige dieciocho bindings únicamente en `host-publisher` y ninguno en los servicios internos |
+| Interfaces | Espera Control Center, dashboard de auditoría, Plano Admin y los cuatro noVNC |
 
 La primera compilación del escritorio Xfce/Chromium descarga numerosos paquetes; las siguientes reutilizan la caché de Docker.
 
 ### Qué debe mostrar Docker Desktop
 
-En la columna **Port(s)**, `desktop-chatgpt`, `desktop-claude`, `desktop-grok`, Plano y los demás servicios internos deben aparecer **sin puertos**. Esto ya no indica un fallo: todos los bindings estarán concentrados en `host-publisher-1`. Allí deben verse `6080`, `6081`, `6082`, `10000`, `12000`, `19901`, `8081`, `16686` y los demás puertos operativos.
+En la columna **Port(s)**, `desktop-chatgpt`, `desktop-claude`, `desktop-grok`, `desktop-gemini`, Plano y los demás servicios internos deben aparecer **sin puertos**. Esto ya no indica un fallo: todos los bindings estarán concentrados en `host-publisher-1`. Allí deben verse `6080`, `6081`, `6082`, `6083`, `10000`, `10700`, `12000`, `19901`, `8081`, `16686` y los demás puertos operativos.
 
 HAProxy trabaja en modo TCP, por lo que no termina TLS ni modifica HTTP, SSE, gRPC o WebSocket. El publisher no pertenece a la red `egress`; solo puede alcanzar backends explícitos de `control` y `upstream-sim` mediante su configuración.[4][5]
 
@@ -56,22 +56,25 @@ HAProxy trabaja en modo TCP, por lo que no termina TLS ni modifica HTTP, SSE, gR
 | ChatGPT noVNC | `http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=remote` |
 | Claude noVNC | `http://127.0.0.1:6081/vnc.html?autoconnect=1&resize=remote` |
 | Grok noVNC | `http://127.0.0.1:6082/vnc.html?autoconnect=1&resize=remote` |
+| Gemini noVNC | `http://127.0.0.1:6083/vnc.html?autoconnect=1&resize=remote` |
+| Dashboard de auditoría | `http://127.0.0.1:10700/` |
 | Plano Gateway | `http://127.0.0.1:12000/` |
 | Plano/Envoy Admin | `http://127.0.0.1:19901/` |
 | mitmweb | `http://127.0.0.1:8081/` |
 | Jaeger | `http://127.0.0.1:16686/` |
 | HAProxy stats | `http://127.0.0.1:8404/` |
 
-Las contraseñas predeterminadas de noVNC y mitmweb son `plano-demo`; se cambian en `.env` mediante `VNC_PASSWORD` y `MITMWEB_PASSWORD`.
+Las contraseñas predeterminadas de noVNC, mitmweb y el dashboard son `plano-demo`; se cambian en `.env`. El usuario predeterminado del dashboard es `admin`.
 
 ## 4. Diagnóstico
 
 ```bash
 ./scripts/mac-diagnose.sh
 ./scripts/smoke-test.sh
+./scripts/test-free-web-fixture.sh
 ```
 
-El diagnóstico debe mostrar **16 bindings en `host-publisher`**, **cero bindings directos en once servicios internos** y trece imágenes `linux/arm64`. La suite funcional debe terminar en `Resultado: 23 PASS, 0 FAIL`.
+El diagnóstico debe mostrar **18 bindings en `host-publisher`**, **cero bindings directos en trece servicios internos** y quince imágenes `linux/arm64`. La suite funcional debe terminar en `Resultado: 34 PASS, 0 FAIL`; el fixture del navegador debe terminar en `2 PASS, 0 FAIL`.
 
 Para guardar un diagnóstico compartible:
 
@@ -98,13 +101,15 @@ Si el arranque informa que un puerto está ocupado, identifique el proceso y cam
 lsof -nP -iTCP:6080 -sTCP:LISTEN
 lsof -nP -iTCP:6081 -sTCP:LISTEN
 lsof -nP -iTCP:6082 -sTCP:LISTEN
+lsof -nP -iTCP:6083 -sTCP:LISTEN
+lsof -nP -iTCP:10700 -sTCP:LISTEN
 ```
 
 No cambie los puertos internos de los contenedores; modifique únicamente los valores del host, por ejemplo `CHATGPT_NOVNC_PORT=16080`.
 
 ## 6. Evidencia de compatibilidad
 
-La versión publicada fue construida para `linux/arm64` bajo emulación QEMU en un host de validación amd64. Se verificaron trece imágenes arm64 y dieciséis bindings concentrados en HAProxy. En una ejecución funcional equivalente se comprobaron las 23 políticas, el upgrade WebSocket `101`, una sesión noVNC visual, streaming SSE, TLS interceptado y mitmweb. Los resultados están en `artifacts/mac-publisher-validation.txt`, `artifacts/host-publisher-smoke-test.txt` y `artifacts/host-publisher-visual-validation.md`.
+El perfil Compose final declara y valida quince servicios `linux/arm64` y dieciocho bindings concentrados en HAProxy. La actualización de auditoría y extensión fue ejecutada funcionalmente en un host de validación Linux: 34 controles end-to-end, 2 escenarios del Chromium real, streaming SSE, TLS interceptado, tópicos, redacción y contenido correlacionado. El escritorio Gemini reutiliza la misma imagen multi-arquitectura ya validada para Apple Silicon. La comprobación nativa final debe ejecutarse en el Mac M3 mediante `./scripts/mac-up.sh`, que falla si una imagen no es arm64 o falta un binding. Los resultados funcionales están en `artifacts/audit-dashboard-smoke-test-final.txt`, `artifacts/free-web-fixture-test-final.txt` y `artifacts/audit-dashboard-visual-validation.md`.
 
 ## Referencias
 

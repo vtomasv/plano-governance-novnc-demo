@@ -15,7 +15,9 @@ MITM_DIR="$OUT_DIR/mitmproxy"
 mkdir -p "$OUT_DIR" "$MITM_DIR"
 umask 077
 
-if [ "$FORCE" != "1" ] && [ -s "$ROOT_KEY" ] && [ -s "$ROOT_CERT" ] && [ -s "$MITM_DIR/mitmproxy-ca.pem" ]; then
+if [ "$FORCE" != "1" ] && [ -s "$ROOT_KEY" ] && [ -s "$ROOT_CERT" ] && [ -s "$LEAF_CERT" ] \
+  && [ -s "$MITM_DIR/mitmproxy-ca.pem" ] \
+  && openssl x509 -in "$LEAF_CERT" -noout -ext subjectAltName 2>/dev/null | grep -q 'DNS:gemini.demo.local'; then
   echo "CA existente: $ROOT_CERT"
   openssl x509 -in "$ROOT_CERT" -noout -subject -fingerprint -sha256
   exit 0
@@ -52,8 +54,9 @@ subjectAltName=@alt_names
 DNS.1=chatgpt.demo.local
 DNS.2=claude.demo.local
 DNS.3=grok.demo.local
-DNS.4=provider-sim
-DNS.5=localhost
+DNS.4=gemini.demo.local
+DNS.5=provider-sim
+DNS.6=localhost
 IP.1=127.0.0.1
 EOF
 

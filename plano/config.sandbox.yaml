@@ -45,6 +45,10 @@ model_providers:
     base_url: http://127.0.0.1:10501/v1
     provider_interface: openai
     access_key: local-demo-key
+  - model: custom/local-gemini
+    base_url: http://127.0.0.1:10501/v1
+    provider_interface: openai
+    access_key: local-demo-key
 
 model_aliases:
   chatgpt-demo:
@@ -53,6 +57,8 @@ model_aliases:
     target: local-claude
   grok-demo:
     target: local-grok
+  gemini-demo:
+    target: local-gemini
   governed-default:
     target: local-chatgpt
 
@@ -66,6 +72,11 @@ routing_preferences:
     description: Análisis detallado, síntesis y redacción estructurada.
     models:
       - custom/local-claude
+      - custom/local-chatgpt
+  - name: multimodal_and_research
+    description: Consultas de investigación y estilo multimodal.
+    models:
+      - custom/local-gemini
       - custom/local-chatgpt
   - name: current_events_style
     description: Preguntas de actualidad y respuestas concisas.

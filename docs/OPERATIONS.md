@@ -14,7 +14,7 @@ chmod +x scripts/*.sh
 ./scripts/mac-diagnose.sh
 ```
 
-En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios. En Mac, `mac-up.sh` combina el Compose principal con `docker-compose.mac-arm64.yml` y `docker-compose.mac-publisher.yml`, exige imágenes `linux/arm64`, usa `--force-recreate` y comprueba que los dieciséis `PortBindings` existan exclusivamente en `host-publisher`. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
+En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios. En Mac, `mac-up.sh` combina el Compose principal con `docker-compose.mac-arm64.yml` y `docker-compose.mac-publisher.yml`, exige imágenes `linux/arm64`, usa `--force-recreate` y comprueba que los dieciocho `PortBindings` existan exclusivamente en `host-publisher`. No combine el Compose principal con `dev/docker-compose.sandbox-internal.yml`. Ese archivo es un workaround del entorno de desarrollo y elimina los mapeos de Docker mediante `ports: !reset []`.
 
 | Puerto predeterminado | Servicio | Uso |
 |---:|---|---|
@@ -22,6 +22,8 @@ En Linux use `./scripts/up.sh`; Windows conserva scripts PowerShell secundarios.
 | `6080` | ChatGPT noVNC | Escritorio gráfico en Chromium |
 | `6081` | Claude noVNC | Escritorio gráfico en Chromium |
 | `6082` | Grok noVNC | Escritorio gráfico en Chromium |
+| `6083` | Gemini noVNC | Escritorio gráfico en Chromium |
+| `10700` | Audit Dashboard | Prompt, resultado, decisión, tópicos y metadata |
 | `12000` | Plano model listener | API LLM gobernada |
 | `8001` | Plano agent listener | Listener del agente de Plano |
 | `19901` | Envoy Admin de Plano | Diagnóstico de listeners, clusters y métricas |
@@ -53,7 +55,7 @@ La configuración fuente se realiza en [`plano/config.local.yaml`](../plano/conf
 |---|---|
 | `filters` | URL del guardrail HTTP `argentina_president_guard` |
 | `listeners` | Listener LLM `12000`, listener de agente `8001` y cadenas de filtros |
-| `model_providers` | ChatGPT, Claude y Grok simulados o reales |
+| `model_providers` | ChatGPT, Claude, Grok y Gemini simulados; proveedores API reales opcionales |
 | `model_aliases` | Alias visibles para clientes |
 | `routing_preferences` | Orden de modelos según preferencia |
 | `tracing` | Exportación OTLP a Jaeger |
@@ -87,7 +89,7 @@ Para cambiarlo, edite `MITMWEB_PASSWORD` y recree exclusivamente el proxy:
 ./scripts/mac-up.sh
 ```
 
-La contraseña noVNC es independiente y está en `VNC_PASSWORD`. `./scripts/up.sh` y `./scripts/diagnose.sh` muestran ambos valores en la terminal local.
+La contraseña noVNC es independiente y está en `VNC_PASSWORD`. El dashboard usa `AUDIT_DASHBOARD_USER` y `AUDIT_DASHBOARD_PASSWORD`; sus valores predeterminados son `admin` y `plano-demo`. Los scripts de diagnóstico muestran las credenciales locales configuradas.
 
 ## Diagnóstico rápido de puertos ausentes
 
@@ -120,13 +122,15 @@ Para recuperar la pila en un Mac M3:
 
 Para recuperar en Linux use `./scripts/up.sh`; en Windows use `scripts/down.ps1` y `scripts/up.ps1`.
 
-En Docker Desktop, `host-publisher-1` debe mostrar `6080`, `6081`, `6082`, `10000`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901`, `8081` y `8404`; los demás contenedores no deben mostrar bindings. Si el mapeo existe pero la URL no responde, revise:
+En Docker Desktop, `host-publisher-1` debe mostrar `6080`, `6081`, `6082`, `6083`, `10000`, `10700`, `10500`, `10501`, `10600`, `16686`, `18443`, `19901`, `8081` y `8404`; los demás contenedores no deben mostrar bindings. Si el mapeo existe pero la URL no responde, revise:
 
 ```bash
 ./scripts/compose.sh logs --tail=200 desktop-chatgpt
 ./scripts/compose.sh logs --tail=200 desktop-claude
 ./scripts/compose.sh logs --tail=200 desktop-grok
-./scripts/up.sh
+./scripts/compose.sh logs --tail=200 desktop-gemini
+./scripts/compose.sh logs --tail=200 audit-dashboard
+./scripts/mac-up.sh
 ```
 
 En Docker Desktop, confirme que el motor esté en modo **Linux containers** y que ningún proceso local esté usando esos puertos. Puede cambiar cualquier puerto del host en `.env` sin modificar el puerto interno `6080` de cada contenedor.

@@ -16,17 +16,17 @@ HAProxy resuelve los nombres de servicio mediante el DNS embebido de Docker. La 
 
 | Propiedad | Decisión |
 |---|---|
-| Bindings | Dieciséis, todos en `host-publisher` |
+| Bindings | Dieciocho, todos en `host-publisher` |
 | Dirección | `127.0.0.1` hardcodeada en Compose |
 | Escritorios | Sin bindings; solo red `control` |
 | Publisher | `control`, `upstream-sim`, `publish`; nunca `egress` |
 | Imagen | HAProxy 3.2.22 arm64 fijado por digest |
 | Privilegios | Usuario `haproxy`, `cap_drop: ALL`, `no-new-privileges`, root filesystem de solo lectura |
-| Diagnóstico | Control Center `10000`, HAProxy stats `8404`, `check-publisher-ports.sh` |
+| Diagnóstico | Control Center `10000`, dashboard `10700`, HAProxy stats `8404`, `check-publisher-ports.sh` |
 
 ## Ajustes sobre la propuesta recibida
 
-La idea se conserva, pero la configuración inline se movió a `host-publisher/haproxy.cfg` para facilitar linting, revisión y pruebas. Se añadió un manifest arm64 fijado, validación automática de dieciséis bindings, comprobación de que once servicios no publiquen directamente y una regla estática que falla si HAProxy se conecta a `egress`.
+La idea se conserva, pero la configuración inline se movió a `host-publisher/haproxy.cfg` para facilitar linting, revisión y pruebas. Se añadió un manifest arm64 fijado, validación automática de dieciocho bindings, comprobación de que trece servicios no publiquen directamente y una regla estática que falla si HAProxy se conecta a `egress`.
 
 `BIND_ADDRESS` no controla el publisher en Mac: cada mapping usa explícitamente `127.0.0.1`. Este comportamiento fail-safe evita una exposición accidental a la LAN.
 
@@ -38,7 +38,7 @@ La red `publish` no es la red de egress de la arquitectura. Sin embargo, como cu
 
 ## Validación
 
-Se verificaron trece imágenes arm64, dieciséis bindings en HAProxy, once servicios con `PortBindings={}`, WebSocket `101`, una sesión noVNC visual y 23/23 pruebas de política, streaming y TLS. El sandbox no permite bridges Docker normales, por lo que la validación funcional usó una topología de host equivalente; la validación declarativa y de `HostConfig.PortBindings` sí utilizó el Compose Mac exacto.
+El perfil final valida quince servicios `linux/arm64`, dieciocho bindings en HAProxy y trece servicios con `PortBindings={}`. La actualización funcional obtuvo 34/34 controles end-to-end y 2/2 escenarios del Chromium real, incluidos Gemini, dashboard, tópicos, redacción, streaming y TLS. El sandbox no permite bridges Docker normales, por lo que la ejecución usó una topología de host equivalente; la validación declarativa de plataforma y bindings sí utiliza el Compose Mac exacto.
 
 ## Referencias
 

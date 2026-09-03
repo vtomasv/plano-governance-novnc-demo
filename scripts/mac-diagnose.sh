@@ -48,7 +48,7 @@ fi
 
 echo
 echo "=== Arquitecturas de imágenes ==="
-for service in cert-init control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok host-publisher; do
+for service in cert-init control-center audit-dashboard policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok desktop-gemini host-publisher; do
   container_id="$(docker_compose ps -aq "$service" 2>/dev/null | head -n 1 || true)"
   if [[ -z "$container_id" ]]; then
     printf 'ERROR %-24s no creado\n' "$service" >&2

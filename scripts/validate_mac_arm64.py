@@ -11,6 +11,7 @@ services = config.get("services", {})
 required = {
     "cert-init",
     "control-center",
+    "audit-dashboard",
     "policy-guard",
     "provider-sim",
     "provider-web-sim",
@@ -21,6 +22,7 @@ required = {
     "desktop-chatgpt",
     "desktop-claude",
     "desktop-grok",
+    "desktop-gemini",
     "host-publisher",
 }
 

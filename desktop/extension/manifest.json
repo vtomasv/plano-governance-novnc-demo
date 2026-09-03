@@ -1,21 +1,31 @@
 {
   "manifest_version": 3,
   "name": "Plano Governance Guard",
-  "version": "1.0.0",
-  "description": "Consulta obligatoriamente a Plano antes de enviar prompts en las interfaces web de demostración.",
+  "version": "1.1.0",
+  "description": "Consulta obligatoriamente a Plano antes de enviar prompts y registra el resultado gobernado.",
   "permissions": ["storage"],
   "host_permissions": [
     "http://governed-agent:10600/*",
     "https://chatgpt.com/*",
     "https://claude.ai/*",
-    "https://grok.com/*"
+    "https://grok.com/*",
+    "https://gemini.google.com/*",
+    "https://bard.google.com/*",
+    "https://*.demo.local/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["https://chatgpt.com/*", "https://claude.ai/*", "https://grok.com/*"],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://grok.com/*",
+        "https://gemini.google.com/*",
+        "https://bard.google.com/*",
+        "https://*.demo.local/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_start"
     }

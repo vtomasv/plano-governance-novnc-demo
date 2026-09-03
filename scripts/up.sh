@@ -43,9 +43,11 @@ for url in \
   "http://${ACCESS_HOST}:${PLANO_PORT:-12000}/healthz" \
   "http://${ACCESS_HOST}:${PLANO_ADMIN_PORT:-19901}/ready" \
   "http://${ACCESS_HOST}:${GOVERNED_AGENT_PORT:-10600}/health" \
+  "http://${ACCESS_HOST}:${AUDIT_DASHBOARD_PORT:-10700}/health" \
   "http://${ACCESS_HOST}:${CHATGPT_NOVNC_PORT:-6080}/vnc.html" \
   "http://${ACCESS_HOST}:${CLAUDE_NOVNC_PORT:-6081}/vnc.html" \
-  "http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html"; do
+  "http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html" \
+  "http://${ACCESS_HOST}:${GEMINI_NOVNC_PORT:-6083}/vnc.html"; do
   ready=0
   for _ in $(seq 1 90); do
     if curl -fsS "$url" >/dev/null 2>&1; then ready=1; break; fi
@@ -78,6 +80,8 @@ Demo operativa:
   ChatGPT noVNC: http://${ACCESS_HOST}:${CHATGPT_NOVNC_PORT:-6080}/vnc.html?autoconnect=1&resize=remote
   Claude noVNC:  http://${ACCESS_HOST}:${CLAUDE_NOVNC_PORT:-6081}/vnc.html?autoconnect=1&resize=remote
   Grok noVNC:    http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html?autoconnect=1&resize=remote
+  Gemini noVNC:  http://${ACCESS_HOST}:${GEMINI_NOVNC_PORT:-6083}/vnc.html?autoconnect=1&resize=remote
+  Auditoría LLM: http://${ACCESS_HOST}:${AUDIT_DASHBOARD_PORT:-10700}/
   Jaeger:        http://${ACCESS_HOST}:${JAEGER_UI_PORT:-16686}
   mitmweb:       http://${ACCESS_HOST}:${MITMPROXY_UI_PORT:-8081}
   Plano API:     http://${ACCESS_HOST}:${PLANO_PORT:-12000}
@@ -85,12 +89,14 @@ Demo operativa:
   HAProxy stats:  http://${ACCESS_HOST}:${HOST_PUBLISHER_STATS_PORT:-8404}/
 
 Contraseña noVNC:   ${VNC_PASSWORD:-plano-demo}
+Dashboard:           ${AUDIT_DASHBOARD_USER:-admin} / ${AUDIT_DASHBOARD_PASSWORD:-plano-demo}
 Contraseña mitmweb: ${MITMWEB_PASSWORD:-plano-demo}
 
 Configuración:
   Puertos/contraseñas: .env
   Plano:                plano/config.local.yaml
   Política:             policy-guard/app.py
+  Auditoría/retención:  .env (AUDIT_*)
 
 En Mac, Docker Desktop mostrará los puertos en host-publisher; los escritorios
 sin Port(s) es el estado seguro esperado.

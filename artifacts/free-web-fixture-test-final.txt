@@ -1,0 +1,3 @@
+PASS: prompt benigno autorizado, reenviado, respondido y auditado.
+PASS: prompt adversarial bloqueado por Plano antes del submit.
+Flujo free web: 2 PASS, 0 FAIL

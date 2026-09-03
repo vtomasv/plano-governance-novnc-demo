@@ -14,11 +14,14 @@ import re
 import time
 import urllib.error
 import urllib.request
+import uuid
 from typing import Any
 
 from mitmproxy import ctx, http
 
 PLANO_URL = os.getenv("PLANO_POLICY_URL", "http://plano:12000/v1/chat/completions")
+AUDIT_BASE_URL = os.getenv("AUDIT_BASE_URL", "http://audit-dashboard:10700")
+AUDIT_TOKEN = os.getenv("AUDIT_INGEST_TOKEN", "plano-audit-ingest-demo")
 FAIL_MODE = os.getenv("POLICY_FAIL_MODE", "closed").casefold()
 MAX_BODY_BYTES = int(os.getenv("MAX_INSPECTION_BODY_BYTES", "2097152"))
 BLOCK_MESSAGE = "No es posible realizar preguntas sobre el presidente de Argentina."
@@ -27,7 +30,7 @@ GOVERNED_HOST_SUFFIXES = tuple(
     item.strip().casefold()
     for item in os.getenv(
         "GOVERNED_HOSTS",
-        "chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,chatgpt.demo.local,claude.demo.local,grok.demo.local",
+        "chatgpt.com,chat.openai.com,api.openai.com,claude.ai,api.anthropic.com,grok.com,x.com,api.x.ai,gemini.google.com,bard.google.com,generativelanguage.googleapis.com,chatgpt.demo.local,claude.demo.local,grok.demo.local,gemini.demo.local",
     ).split(",")
     if item.strip()
 )
@@ -54,6 +57,8 @@ def provider_for_host(host: str) -> tuple[str, str]:
         return "claude", "custom/local-claude"
     if "grok" in lowered or lowered == "x.com" or lowered.endswith(".x.com") or "api.x.ai" in lowered:
         return "grok", "custom/local-grok"
+    if "gemini" in lowered or "bard" in lowered or "generativelanguage" in lowered:
+        return "gemini", "custom/local-gemini"
     return "chatgpt", "custom/local-chatgpt"
 
 
@@ -102,7 +107,48 @@ def extract_prompt(flow: http.HTTPFlow) -> tuple[str | None, str]:
     return None, "opaque_body"
 
 
-def plano_decision(*, prompt: str, provider: str, host: str, path: str) -> tuple[bool, str, str]:
+def audit_post(path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        request = urllib.request.Request(
+            f"{AUDIT_BASE_URL}{path}",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            method="POST",
+            headers={"content-type": "application/json", "x-audit-token": AUDIT_TOKEN},
+        )
+        with urllib.request.urlopen(request, timeout=2.5) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except Exception:
+        return {}
+
+
+def correlate_audit(prompt: str, provider: str) -> str:
+    result = audit_post("/correlate", {"prompt_text": prompt, "provider": provider})
+    return str(result.get("audit_id") or uuid.uuid4())
+
+
+def response_content(flow: http.HTTPFlow) -> str:
+    response = flow.response
+    if response is None or not response.raw_content:
+        return ""
+    raw = response.raw_content[:262144]
+    content_type = response.headers.get("content-type", "").casefold()
+    try:
+        text = response.get_text(strict=False)
+    except Exception:
+        text = raw.decode("utf-8", errors="replace")
+    text = text[:50000]
+    if "json" in content_type:
+        try:
+            parsed = json.loads(text)
+            strings = collect_strings(parsed)
+            clean = "\n".join(value for value in strings if value.strip())
+            return clean[:50000] or text
+        except ValueError:
+            return text
+    return text
+
+
+def plano_decision(*, prompt: str, provider: str, host: str, path: str, audit_id: str) -> tuple[bool, str, str]:
     payload = {
         "model": provider_for_host(host)[1],
         "messages": [{"role": "user", "content": prompt}],
@@ -112,6 +158,9 @@ def plano_decision(*, prompt: str, provider: str, host: str, path: str) -> tuple
             "source": "tls-interceptor",
             "target_host": host,
             "target_path": path[:512],
+            "audit_id": audit_id,
+            "audit_phase": "tls-preflight",
+            "client": f"{provider}-free-web" if not host.endswith(".demo.local") else "tls-demo",
         },
     }
     request = urllib.request.Request(
@@ -187,11 +236,29 @@ class PlanoGovernanceAddon:
             return
 
         provider, _model = provider_for_host(host)
+        audit_id = correlate_audit(prompt, provider)
+        started = time.monotonic()
+        audit_post("/ingest", {
+            "audit_id": audit_id,
+            "source": "tls-interceptor",
+            "client": f"{provider}-free-web" if not host.endswith(".demo.local") else "tls-demo",
+            "provider": provider,
+            "model": provider_for_host(host)[1],
+            "target_host": host,
+            "target_path": flow.request.path[:512],
+            "endpoint": flow.request.path[:512],
+            "prompt_text": prompt,
+            "request_bytes": len(flow.request.raw_content or b""),
+            "streaming": "stream" in flow.request.path.casefold() or "text/event-stream" in flow.request.headers.get("accept", "").casefold(),
+            "state": "evaluating",
+            "properties": {"capture": "mitmproxy", "parse_status": parse_status},
+        })
         allowed, message, decision_id = plano_decision(
             prompt=prompt,
             provider=provider,
             host=host,
             path=flow.request.path,
+            audit_id=audit_id,
         )
         event = {
             "timestamp": int(time.time()),
@@ -200,12 +267,44 @@ class PlanoGovernanceAddon:
             "provider": provider,
             "decision": "allow" if allowed else "deny",
             "decision_id": decision_id,
+            "audit_id": audit_id,
             "prompt_sha256_16": hashlib.sha256(prompt.encode("utf-8", errors="replace")).hexdigest()[:16],
         }
         ctx.log.info(json.dumps(event, ensure_ascii=False, separators=(",", ":")))
+        event["started_monotonic"] = started
         flow.metadata["plano_policy"] = event
+        audit_post("/ingest", {
+            "audit_id": audit_id,
+            "decision": "allow" if allowed else "deny",
+            "filtered": not allowed,
+            "rule": "allowed" if allowed else "argentina_president_or_dlp",
+            "decision_id": decision_id,
+            "policy_message": message,
+            "status_code": 200 if allowed else 403,
+            "state": "authorized" if allowed else "blocked",
+        })
         if not allowed:
             deny(flow, message, decision_id, "argentina_president_or_dlp")
+
+    def response(self, flow: http.HTTPFlow) -> None:
+        event = flow.metadata.get("plano_policy")
+        if not isinstance(event, dict) or event.get("decision") != "allow" or flow.response is None:
+            return
+        text = response_content(flow)
+        started = float(event.get("started_monotonic") or time.monotonic())
+        status = int(flow.response.status_code)
+        audit_post("/ingest", {
+            "audit_id": event.get("audit_id"),
+            "response_text": text,
+            "response_bytes": len(flow.response.raw_content or b""),
+            "status_code": status,
+            "duration_ms": round((time.monotonic() - started) * 1000, 1),
+            "decision": "allow",
+            "filtered": False,
+            "rule": "allowed",
+            "state": "completed" if status < 400 else "error",
+            "properties": {"response_capture": "mitmproxy", "content_type": flow.response.headers.get("content-type", "")[:160]},
+        })
 
 
 addons = [PlanoGovernanceAddon()]

@@ -38,6 +38,7 @@ check_publisher_binding 10000 "${CONTROL_CENTER_PORT:-10000}" "Control Center"
 check_publisher_binding 6080 "${CHATGPT_NOVNC_PORT:-6080}" "ChatGPT noVNC"
 check_publisher_binding 6081 "${CLAUDE_NOVNC_PORT:-6081}" "Claude noVNC"
 check_publisher_binding 6082 "${GROK_NOVNC_PORT:-6082}" "Grok noVNC"
+check_publisher_binding 6083 "${GEMINI_NOVNC_PORT:-6083}" "Gemini noVNC"
 check_publisher_binding 12000 "${PLANO_PORT:-12000}" "Plano Gateway"
 check_publisher_binding 8001 "${PLANO_AGENT_PORT:-8001}" "Plano Agent"
 check_publisher_binding 19901 "${PLANO_ADMIN_PORT:-19901}" "Plano Admin"
@@ -45,6 +46,7 @@ check_publisher_binding 10500 "${POLICY_GUARD_PORT:-10500}" "Policy Guard"
 check_publisher_binding 10501 "${PROVIDER_SIM_PORT:-10501}" "Provider Sim"
 check_publisher_binding 18443 "${PROVIDER_TLS_PORT:-18443}" "Provider TLS"
 check_publisher_binding 10600 "${GOVERNED_AGENT_PORT:-10600}" "Governed Agent"
+check_publisher_binding 10700 "${AUDIT_DASHBOARD_PORT:-10700}" "Audit Dashboard"
 check_publisher_binding 16686 "${JAEGER_UI_PORT:-16686}" "Jaeger UI"
 check_publisher_binding 4317 "${OTLP_GRPC_PORT:-4317}" "OTLP gRPC"
 check_publisher_binding 4318 "${OTLP_HTTP_PORT:-4318}" "OTLP HTTP"
@@ -53,7 +55,7 @@ check_publisher_binding 8404 "${HOST_PUBLISHER_STATS_PORT:-8404}" "HAProxy stats
 
 echo
 echo "Comprobando ausencia de publicación directa:"
-for service in control-center policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok; do
+for service in control-center audit-dashboard policy-guard provider-sim provider-web-sim jaeger plano governed-agent proxy-interceptor desktop-chatgpt desktop-claude desktop-grok desktop-gemini; do
   container_id="$(docker_compose ps -aq "$service" 2>/dev/null | head -n 1 || true)"
   if [[ -z "$container_id" ]]; then
     printf 'ERROR %-28s no creado\n' "$service" >&2

@@ -52,7 +52,7 @@
 <body>
   <header>
     <div><h1>Plano Governed AI Desktop</h1><div class="subtitle">Toda solicitud LLM atraviesa Plano antes de llegar al proveedor.</div></div>
-    <div class="badges"><span class="badge ok">Plano: obligatorio</span><span class="badge">TLS: CA explícita</span><span class="badge">Prompt logging: desactivado</span></div>
+    <div class="badges"><span class="badge ok">Plano: obligatorio</span><span class="badge">TLS: CA explícita</span><span class="badge">Auditoría: contenido redactado · 7 días</span></div>
   </header>
   <main>
     <aside>
@@ -62,6 +62,7 @@
         <option value="chatgpt">ChatGPT</option>
         <option value="claude">Claude</option>
         <option value="grok">Grok</option>
+        <option value="gemini">Gemini</option>
       </select>
       <div class="rule"><strong>Regla activa</strong><br />Se bloquean preguntas sobre el presidente de Argentina, incluidas variantes “Miley” y “Mliey”. Plano devuelve un mensaje estable y el upstream no recibe el prompt.</div>
       <label>Pruebas rápidas</label>
@@ -73,6 +74,7 @@
       <label>Cuenta web gratuita</label>
       <div class="side-actions">
         <a class="button secondary" id="officialSite" target="_blank" rel="noopener">Abrir sitio oficial</a>
+        <a class="button secondary" href="http://audit-dashboard:10700/" target="_blank" rel="noopener">Abrir dashboard de auditoría</a>
       </div>
       <div class="rule">El acceso a la cuenta web exige inicio de sesión manual. La demo automática usa proveedores locales; no extrae ni almacena credenciales.</div>
     </aside>
@@ -99,8 +101,8 @@ const promptBox = document.querySelector('#prompt');
 const messages = document.querySelector('#messages');
 const statusEl = document.querySelector('#status');
 const officialSite = document.querySelector('#officialSite');
-const sites = {chatgpt:'https://chatgpt.com/', claude:'https://claude.ai/', grok:'https://grok.com/'};
-const titles = {chatgpt:'ChatGPT', claude:'Claude', grok:'Grok'};
+const sites = {chatgpt:'https://chatgpt.com/', claude:'https://claude.ai/', grok:'https://grok.com/', gemini:'https://gemini.google.com/'};
+const titles = {chatgpt:'ChatGPT', claude:'Claude', grok:'Grok', gemini:'Gemini'};
 provider.value = params.get('provider') || 'chatgpt';
 
 function refreshProvider() {

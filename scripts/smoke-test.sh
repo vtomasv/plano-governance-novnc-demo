@@ -24,6 +24,9 @@ PROVIDER_URL="${PROVIDER_URL:-http://${ACCESS_HOST}:${PROVIDER_SIM_PORT:-10501}}
 CONTROL_CENTER_URL="http://${ACCESS_HOST}:${CONTROL_CENTER_PORT:-10000}"
 PLANO_ADMIN_URL="http://${ACCESS_HOST}:${PLANO_ADMIN_PORT:-19901}"
 MITMWEB_URL="http://${ACCESS_HOST}:${MITMPROXY_UI_PORT:-8081}"
+AGENT_URL="http://${ACCESS_HOST}:${GOVERNED_AGENT_PORT:-10600}"
+AUDIT_URL="http://${ACCESS_HOST}:${AUDIT_DASHBOARD_PORT:-10700}"
+AUDIT_AUTH="${AUDIT_DASHBOARD_USER:-admin}:${AUDIT_DASHBOARD_PASSWORD:-plano-demo}"
 PASS=0
 FAIL=0
 TMP_DIR="$(mktemp -d)"
@@ -72,13 +75,15 @@ wait_for "Control Center" "$CONTROL_CENTER_URL/health"
 wait_for "ChatGPT noVNC :${CHATGPT_NOVNC_PORT:-6080}" "http://${ACCESS_HOST}:${CHATGPT_NOVNC_PORT:-6080}/vnc.html"
 wait_for "Claude noVNC :${CLAUDE_NOVNC_PORT:-6081}" "http://${ACCESS_HOST}:${CLAUDE_NOVNC_PORT:-6081}/vnc.html"
 wait_for "Grok noVNC :${GROK_NOVNC_PORT:-6082}" "http://${ACCESS_HOST}:${GROK_NOVNC_PORT:-6082}/vnc.html"
+wait_for "Gemini noVNC :${GEMINI_NOVNC_PORT:-6083}" "http://${ACCESS_HOST}:${GEMINI_NOVNC_PORT:-6083}/vnc.html"
+wait_for "Audit Dashboard" "$AUDIT_URL/health"
 wait_for "policy-guard" "$POLICY_URL/health"
 wait_for "provider-sim" "$PROVIDER_URL/health"
 wait_for "Plano Gateway" "$PLANO_URL/healthz"
 wait_for "Plano Admin" "$PLANO_ADMIN_URL/ready"
 
 status_file="$TMP_DIR/control-status.json"
-if curl -fsS "$CONTROL_CENTER_URL/api/status" > "$status_file" && grep -Fq '"desktop_chatgpt"' "$status_file" && grep -Fq '"plano_admin"' "$status_file"; then
+if curl -fsS "$CONTROL_CENTER_URL/api/status" > "$status_file" && grep -Fq '"desktop_chatgpt"' "$status_file" && grep -Fq '"desktop_gemini"' "$status_file" && grep -Fq '"audit_dashboard"' "$status_file" && grep -Fq '"plano_admin"' "$status_file"; then
   pass "Control Center inventaría escritorios y Plano Admin"
 else
   fail "Control Center no devolvió el inventario esperado"
@@ -101,7 +106,7 @@ fi
 
 curl -fsS -X POST "$PROVIDER_URL/reset" >/dev/null
 
-for model in custom/local-chatgpt custom/local-claude custom/local-grok; do
+for model in custom/local-chatgpt custom/local-claude custom/local-grok custom/local-gemini; do
   http_post "permitido $model" 200 "solicitud permitida por Plano" \
     "$PLANO_URL/v1/chat/completions" \
     "{\"model\":\"$model\",\"messages\":[{\"role\":\"user\",\"content\":\"¿Cuál es la capital de Francia?\"}],\"stream\":false}"
@@ -156,6 +161,55 @@ docker_compose exec -T desktop-chatgpt cat /tmp/tls-blocked.json > "$tls_blocked
 if [[ "$code" == "403" ]] && grep -Fq "No es posible realizar preguntas sobre el presidente de Argentina." "$tls_blocked"; then pass "TLS interceptado bloqueado"; else fail "TLS bloqueado falló: HTTP $code body=$(cat "$tls_blocked")"; fi
 after_block=$(provider_calls)
 if [[ "$before_block" == "$after_block" ]]; then pass "el bloqueo TLS no alcanzó el upstream"; else fail "el upstream recibió el prompt TLS bloqueado ($before_block -> $after_block)"; fi
+
+unauth_code=$(curl -sS -o /dev/null -w '%{http_code}' "$AUDIT_URL/api/events" || true)
+if [[ "$unauth_code" == "401" ]]; then pass "dashboard exige autenticación"; else fail "dashboard sin autenticación devolvió HTTP $unauth_code"; fi
+
+audit_summary="$TMP_DIR/audit-summary.json"
+if curl -fsS -u "$AUDIT_AUTH" "$AUDIT_URL/api/summary?hours=24" > "$audit_summary" && grep -Fq '"allowed"' "$audit_summary" && grep -Fq '"denied"' "$audit_summary"; then
+  pass "dashboard resume decisiones permitidas y bloqueadas"
+else
+  fail "dashboard no devolvió el resumen esperado"
+fi
+
+audit_events="$TMP_DIR/audit-events.json"
+if curl -fsS -u "$AUDIT_AUTH" "$AUDIT_URL/api/events?hours=24&limit=200" > "$audit_events" && grep -Fq 'capital de Francia' "$audit_events" && grep -Fq 'solicitud permitida por Plano' "$audit_events"; then
+  pass "dashboard muestra prompt y resultado permitidos"
+else
+  fail "dashboard no correlacionó prompt y resultado permitidos"
+fi
+
+if grep -Fq 'gobierno_y_politica' "$audit_events" && grep -Fq 'ciencia_y_educacion' "$audit_events"; then
+  pass "dashboard agrupa solicitudes por tópicos"
+else
+  fail "dashboard no clasificó los tópicos esperados"
+fi
+
+if grep -Fq 'REDACTED_BY_AUDIT' "$audit_events" && ! grep -Fq 'abcdefghijklmnop1234567890' "$audit_events"; then
+  pass "dashboard redacta secretos antes de persistir"
+else
+  fail "dashboard no aplicó la redacción esperada"
+fi
+
+web_preflight="$TMP_DIR/web-preflight.json"
+curl -fsS -H 'content-type: application/json' -d '{"provider":"gemini","prompt":"Explica la fotosíntesis en dos frases","target_host":"gemini.google.com","target_path":"/app"}' "$AGENT_URL/api/policy-check" > "$web_preflight"
+audit_id=$(sed -n 's/.*"audit_id":"\([^"]*\)".*/\1/p' "$web_preflight")
+if grep -Fq '"allowed":true' "$web_preflight" && [[ -n "$audit_id" ]]; then
+  pass "prevalidación web Gemini retorna audit_id y autorización"
+else
+  fail "prevalidación web Gemini incompleta: $(cat "$web_preflight")"
+fi
+
+web_result="$TMP_DIR/web-result.json"
+code=$(curl -sS -o "$web_result" -w '%{http_code}' -H 'content-type: application/json' -d "{\"audit_id\":\"$audit_id\",\"response_text\":\"La fotosíntesis transforma luz en energía química.\",\"duration_ms\":321}" "$AGENT_URL/api/web-result" || true)
+if [[ "$code" == "200" ]]; then pass "respuesta web completa el evento correlacionado"; else fail "resultado web HTTP $code: $(cat "$web_result")"; fi
+
+web_detail="$TMP_DIR/web-detail.json"
+if curl -fsS -u "$AUDIT_AUTH" "$AUDIT_URL/api/events/$audit_id" > "$web_detail" && grep -Fq 'gemini-free-web' "$web_detail" && grep -Fq 'transforma luz en energía química' "$web_detail" && grep -Fq '"state":"completed"' "$web_detail"; then
+  pass "dashboard muestra la transacción web Gemini completa"
+else
+  fail "dashboard no muestra la transacción web completa: $(cat "$web_detail" 2>/dev/null || true)"
+fi
 
 printf '\nResultado: %d PASS, %d FAIL\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]]

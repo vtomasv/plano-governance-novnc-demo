@@ -14,6 +14,8 @@ import os
 import re
 import time
 import unicodedata
+import urllib.request
+import uuid
 from collections import Counter, deque
 from typing import Any, Iterable
 
@@ -23,6 +25,8 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 POLICY_MESSAGE = "No es posible realizar preguntas sobre el presidente de Argentina."
 DATA_LOSS_MESSAGE = "La solicitud fue bloqueada para prevenir una posible fuga de datos sensibles."
 LOG_PROMPT_BODIES = os.getenv("LOG_PROMPT_BODIES", "false").lower() == "true"
+AUDIT_URL = os.getenv("AUDIT_URL", "http://audit-dashboard:10700/ingest")
+AUDIT_TOKEN = os.getenv("AUDIT_INGEST_TOKEN", "plano-audit-ingest-demo")
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -198,14 +202,31 @@ def evaluate_policy(texts: list[str]) -> tuple[bool, str, str]:
     return True, "allowed", "Solicitud permitida."
 
 
-def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, texts: list[str]) -> str:
+def audit_event(payload: dict[str, Any]) -> None:
+    try:
+        request = urllib.request.Request(
+            AUDIT_URL,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            method="POST",
+            headers={"content-type": "application/json", "x-audit-token": AUDIT_TOKEN},
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
+            response.read(256)
+    except Exception:
+        return
+
+
+def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, texts: list[str], body: dict[str, Any]) -> tuple[str, str]:
     digest = hashlib.sha256("\n".join(texts).encode("utf-8", errors="replace")).hexdigest()[:16]
     decision_id = hashlib.sha256(f"{time.time_ns()}:{digest}".encode()).hexdigest()[:16]
+    metadata = body.get("metadata", {}) if isinstance(body.get("metadata"), dict) else {}
+    audit_id = str(metadata.get("audit_id") or uuid.uuid4())
     outcome = "allow" if allowed else "deny"
     COUNTERS[f"decision_{outcome}"] += 1
     COUNTERS[f"rule_{rule}"] += 1
     event = {
         "decision_id": decision_id,
+        "audit_id": audit_id,
         "timestamp": int(time.time()),
         "decision": outcome,
         "rule": rule,
@@ -217,7 +238,27 @@ def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, t
         event["prompt_debug"] = texts
     RECENT_DECISIONS.appendleft(event)
     logger.info(json.dumps(event, ensure_ascii=False, separators=(",", ":")))
-    return decision_id
+    audit_payload: dict[str, Any] = {
+        "audit_id": audit_id,
+        "source": str(metadata.get("source") or "direct-plano"),
+        "provider": str(metadata.get("provider") or provider),
+        "model": str(body.get("model") or provider),
+        "endpoint": endpoint,
+        "prompt_text": "\n".join(texts),
+        "decision": outcome,
+        "filtered": not allowed,
+        "rule": rule,
+        "decision_id": decision_id,
+        "policy_message": "Solicitud permitida por Plano." if allowed else (POLICY_MESSAGE if rule == "argentina_president" else DATA_LOSS_MESSAGE),
+        "status_code": 200 if allowed else 403,
+        "streaming": bool(body.get("stream", False)),
+        "state": "authorized" if allowed else "blocked",
+        "properties": {"filter": "argentina_president_guard", "audit_phase": metadata.get("audit_phase")},
+    }
+    if metadata.get("client"):
+        audit_payload["client"] = str(metadata["client"])
+    audit_event(audit_payload)
+    return decision_id, audit_id
 
 
 @app.post("/{path:path}")
@@ -235,12 +276,13 @@ async def guard(path: str, request: Request):
     texts = extract_user_texts(body)
     provider = str(body.get("metadata", {}).get("provider", body.get("model", "unknown"))) if isinstance(body, dict) else "unknown"
     allowed, rule, message = evaluate_policy(texts)
-    decision_id = record_decision(
+    decision_id, audit_id = record_decision(
         allowed=allowed,
         rule=rule,
         endpoint=endpoint,
         provider=provider,
         texts=texts,
+        body=body,
     )
 
     if not allowed:
@@ -252,6 +294,7 @@ async def guard(path: str, request: Request):
                     "code": rule,
                     "message": message,
                     "decision_id": decision_id,
+                    "audit_id": audit_id,
                 }
             },
             headers={"x-plano-policy-decision": "deny", "x-plano-decision-id": decision_id},
@@ -262,6 +305,7 @@ async def guard(path: str, request: Request):
         if isinstance(metadata, dict):
             metadata["plano_policy_decision"] = "allow"
             metadata["plano_decision_id"] = decision_id
+            metadata["audit_id"] = audit_id
     return JSONResponse(
         status_code=200,
         content=body,
