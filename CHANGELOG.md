@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.2 — 2026-09-03
+
+Corrige el falso negativo de `mac-up.sh` al comprobar `host-publisher`: bajo `set -o pipefail`, `grep -q` podía cerrar la tubería después de encontrar el servicio y hacer que Docker Compose terminara con SIGPIPE (`141`). El script ahora captura primero la lista completa de servicios y valida después sobre ese valor. La sintaxis fue comprobada con Bash 3.2.
+
 ## 2.0.1 — 2026-09-03
 
 Este hotfix corrige el caso donde `host-publisher` quedaba en estado `Created` y ninguna interfaz era visible cuando un backend tardaba en alcanzar `healthy`.

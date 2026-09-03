@@ -118,8 +118,11 @@ pull_external_arm64_images
 
 # Materializar primero el único borde del host. Sin dependencias de salud,
 # HAProxy puede quedar escuchando mientras los backends terminan de arrancar.
-if ! docker_compose config --services | grep -Fxq 'host-publisher'; then
+compose_services="$(docker_compose config --services)"
+if ! grep -Fxq 'host-publisher' <<<"$compose_services"; then
   echo "ERROR: el Compose efectivo no contiene host-publisher." >&2
+  echo "Servicios renderizados:" >&2
+  printf '%s\n' "$compose_services" >&2
   echo "Archivos esperados: docker-compose.yml + docker-compose.mac-arm64.yml + docker-compose.mac-publisher.yml" >&2
   exit 1
 fi
