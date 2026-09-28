@@ -211,5 +211,30 @@ else
   fail "dashboard no muestra la transacción web completa: $(cat "$web_detail" 2>/dev/null || true)"
 fi
 
+# Gestión de reglas: una regla creada desde la API debe aplicarse de inmediato en Plano y poder retirarse.
+rule_probe='{"model":"custom/local-chatgpt","messages":[{"role":"user","content":"hablemos de zzsmoketopic"}],"stream":false}'
+plano_code() { curl -sS -o /dev/null -w '%{http_code}' -H 'content-type: application/json' -d "$rule_probe" "$PLANO_URL/v1/chat/completions" || true; }
+rules_unauth=$(curl -sS -o /dev/null -w '%{http_code}' "$AUDIT_URL/api/rules" || true)
+if [[ "$rules_unauth" == "401" ]]; then pass "API de reglas exige autenticación"; else fail "API de reglas sin autenticación: HTTP $rules_unauth"; fi
+curl -sS -u "$AUDIT_AUTH" -X DELETE "$AUDIT_URL/api/rules/smoke_tmp" >/dev/null 2>&1 || true
+before=$(plano_code)
+created="$TMP_DIR/rule-created.json"
+curl -sS -u "$AUDIT_AUTH" -H 'content-type: application/json' -d '{"id":"smoke_tmp","name":"Smoke temporal","message":"Bloqueo de prueba.","clauses":[[{"terms":["zzsmoketopic"]}]]}' "$AUDIT_URL/api/rules" > "$created" || true
+during=$(plano_code)
+curl -sS -u "$AUDIT_AUTH" -X DELETE "$AUDIT_URL/api/rules/smoke_tmp" >/dev/null || true
+after=$(plano_code)
+if [[ "$before" == "200" && "$during" == "403" && "$after" == "200" ]] && grep -Fq '"applied":true' "$created"; then
+  pass "regla creada, aplicada de inmediato y retirada (HTTP $before -> $during -> $after)"
+else
+  fail "ciclo de regla dinámica incorrecto (HTTP $before -> $during -> $after): $(cat "$created" 2>/dev/null || true)"
+fi
+
+analytics_status="$TMP_DIR/analytics-status.json"
+if curl -fsS -u "$AUDIT_AUTH" "$AUDIT_URL/api/analytics/status" > "$analytics_status" && grep -Fq '"taxonomy"' "$analytics_status" && curl -fsS -u "$AUDIT_AUTH" "$AUDIT_URL/api/analytics/summary?hours=24" | grep -Fq '"totals"'; then
+  pass "API de analítica de uso responde (Ollama: $(grep -o '"reachable":[a-z]*' "$analytics_status" | head -1))"
+else
+  fail "API de analítica de uso no responde"
+fi
+
 printf '\nResultado: %d PASS, %d FAIL\n' "$PASS" "$FAIL"
 [[ "$FAIL" -eq 0 ]]

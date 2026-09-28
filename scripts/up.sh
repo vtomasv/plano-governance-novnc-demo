@@ -95,7 +95,8 @@ Contraseña mitmweb: ${MITMWEB_PASSWORD:-plano-demo}
 Configuración:
   Puertos/contraseñas: .env
   Plano:                plano/config.local.yaml
-  Política:             policy-guard/app.py
+  Reglas de política:   dashboard en /rules (recarga inmediata)
+  Analítica de uso:     dashboard en /usage (requiere Ollama: make ollama)
   Auditoría/retención:  .env (AUDIT_*)
 
 En Mac, Docker Desktop mostrará los puertos en host-publisher; los escritorios

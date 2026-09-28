@@ -1,4 +1,7 @@
-.PHONY: up mac-up down purge test logs status ports diagnose mac-diagnose certs validate
+.PHONY: ollama up mac-up down purge test logs status ports diagnose mac-diagnose certs validate
+
+ollama:
+	./scripts/setup-ollama.sh
 
 up:
 	./scripts/up.sh

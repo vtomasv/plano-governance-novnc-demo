@@ -11,22 +11,25 @@ import hashlib
 import json
 import logging
 import os
-import re
+import secrets
+import threading
 import time
-import unicodedata
 import urllib.request
 import uuid
 from collections import Counter, deque
-from typing import Any, Iterable
+from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
-POLICY_MESSAGE = "No es posible realizar preguntas sobre el presidente de Argentina."
-DATA_LOSS_MESSAGE = "La solicitud fue bloqueada para prevenir una posible fuga de datos sensibles."
+from default_rules import DATA_LOSS_MESSAGE, POLICY_MESSAGE, default_rules
+from engine import CompiledRule, compile_rule, compile_rules, evaluate, normalize_text, validate_rule
+
 LOG_PROMPT_BODIES = os.getenv("LOG_PROMPT_BODIES", "false").lower() == "true"
 AUDIT_URL = os.getenv("AUDIT_URL", "http://audit-dashboard:10700/ingest")
 AUDIT_TOKEN = os.getenv("AUDIT_INGEST_TOKEN", "plano-audit-ingest-demo")
+RULES_BASE_URL = os.getenv("RULES_BASE_URL", "http://audit-dashboard:10700")
+RULES_POLL_SECONDS = max(1.0, float(os.getenv("RULES_POLL_SECONDS", "5")))
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -34,88 +37,77 @@ logging.basicConfig(
 )
 logger = logging.getLogger("policy_guard")
 
-app = FastAPI(title="Plano Governance Policy Guard", version="1.0.0")
+app = FastAPI(title="Plano Governance Policy Guard", version="2.0.0")
 COUNTERS: Counter[str] = Counter()
 RECENT_DECISIONS: deque[dict[str, Any]] = deque(maxlen=100)
 
-PRESIDENT_TERMS = {
-    "presidente",
-    "presidenta",
-    "presidencia",
-    "presidential",
-    "president",
-    "mandatario",
-    "mandataria",
-    "jefe de estado",
-    "head of state",
-}
-ARGENTINA_TERMS = {"argentina", "argentino", "argentina's", "casa rosada"}
-MILEI_ALIASES = {"milei", "miley", "mliey", "javier milei", "javier gerardo milei"}
 
-SECRET_RULES: list[tuple[str, re.Pattern[str]]] = [
-    ("private_key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.I)),
-    ("openai_key", re.compile(r"\bsk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}\b")),
-    ("anthropic_key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b", re.I)),
-    ("aws_access_key", re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b")),
-    ("github_token", re.compile(r"\bgh(?:p|o|u|s|r)_[A-Za-z0-9]{30,}\b")),
-    ("bearer_token", re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]{24,}\b", re.I)),
-    (
-        "assigned_secret",
-        re.compile(
-            r"\b(?:password|passwd|api[_ -]?key|secret|token)\s*[:=]\s*['\"]?[A-Za-z0-9._~+/=-]{12,}",
-            re.I,
-        ),
-    ),
-]
+class RuleState:
+    """Conjunto de reglas activo. El reemplazo es atómico: nunca hay estado a medias."""
+
+    def __init__(self) -> None:
+        self.rules: tuple[CompiledRule, ...] = compile_rules(default_rules())[0]
+        self.revision = 0
+        self.source = "builtin"
+        self.errors: dict[str, str] = {}
+        self.loaded_at = time.time()
+        self.last_error = ""
 
 
-def normalize_text(value: str) -> str:
-    """Normaliza Unicode, acentos, espacios y sustituciones leetspeak comunes."""
-    value = unicodedata.normalize("NFKC", value)
-    value = "".join(
-        char for char in unicodedata.normalize("NFKD", value) if not unicodedata.combining(char)
+STATE = RuleState()
+REFRESH_LOCK = threading.Lock()
+
+
+def apply_rules(rules: list[dict[str, Any]], revision: int, source: str) -> None:
+    compiled, errors = compile_rules(rules)
+    STATE.rules, STATE.errors = compiled, errors
+    STATE.revision, STATE.source, STATE.loaded_at = revision, source, time.time()
+    logger.info("Reglas aplicadas: revision=%s activas=%s invalidas=%s", revision, len(compiled), len(errors))
+
+
+def _dashboard_call(path: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{RULES_BASE_URL}{path}",
+        data=None if payload is None else json.dumps(payload).encode("utf-8"),
+        method="GET" if payload is None else "POST",
+        headers={"content-type": "application/json", "x-audit-token": AUDIT_TOKEN},
     )
-    value = value.casefold().translate(str.maketrans({"1": "i", "!": "i", "3": "e", "0": "o"}))
-    value = re.sub(r"[^a-z0-9'\s]", " ", value)
-    return re.sub(r"\s+", " ", value).strip()
+    with urllib.request.urlopen(request, timeout=3) as response:
+        return json.loads(response.read())
 
 
-def damerau_levenshtein_at_most_one(left: str, right: str) -> bool:
-    """Detecta igualdad, una edición o una transposición; suficiente para Milei/Mliey/Miley."""
-    if left == right:
-        return True
-    if abs(len(left) - len(right)) > 1:
+def refresh_rules(force: bool = False) -> bool:
+    """Sincroniza con el dashboard. Ante error conserva las reglas vigentes."""
+    with REFRESH_LOCK:
+        try:
+            data = _dashboard_call("/policy/rules")
+            if data.get("needs_seed"):
+                _dashboard_call("/policy/seed", {"rules": default_rules()})
+                data = _dashboard_call("/policy/rules")
+            STATE.last_error = ""
+            if force or data["revision"] != STATE.revision or STATE.source != "dashboard":
+                apply_rules(data["rules"], int(data["revision"]), "dashboard")
+                return True
+        except Exception as exc:  # el dashboard puede no estar disponible; se sigue con lo último válido
+            STATE.last_error = f"{type(exc).__name__}: {exc}"[:300]
         return False
-    if len(left) == len(right):
-        diffs = [idx for idx, (a, b) in enumerate(zip(left, right)) if a != b]
-        if len(diffs) == 1:
-            return True
-        return (
-            len(diffs) == 2
-            and diffs[1] == diffs[0] + 1
-            and left[diffs[0]] == right[diffs[1]]
-            and left[diffs[1]] == right[diffs[0]]
-        )
-    short, long = (left, right) if len(left) < len(right) else (right, left)
-    index_short = index_long = edits = 0
-    while index_short < len(short) and index_long < len(long):
-        if short[index_short] == long[index_long]:
-            index_short += 1
-            index_long += 1
-        else:
-            edits += 1
-            index_long += 1
-            if edits > 1:
-                return False
-    return True
 
 
-def contains_milei_variant(normalized: str) -> bool:
-    compact = re.sub(r"\s+", "", normalized)
-    if any(re.sub(r"\s+", "", alias) in compact for alias in MILEI_ALIASES):
-        return True
-    words = re.findall(r"[a-z0-9]+", normalized)
-    return any(4 <= len(word) <= 6 and damerau_levenshtein_at_most_one(word, "milei") for word in words)
+def _poll_loop() -> None:
+    while True:
+        refresh_rules()
+        time.sleep(RULES_POLL_SECONDS)
+
+
+def require_admin(request: Request) -> None:
+    token = request.headers.get("x-audit-token", "")
+    if not token or not secrets.compare_digest(token, AUDIT_TOKEN):
+        raise HTTPException(status_code=403, detail="Token inválido")
+
+
+@app.on_event("startup")
+def startup() -> None:
+    threading.Thread(target=_poll_loop, name="rules-poller", daemon=True).start()
 
 
 def extract_user_texts(body: Any) -> list[str]:
@@ -180,26 +172,11 @@ def extract_content(content: Any) -> list[str]:
     return []
 
 
-def has_any_phrase(normalized: str, phrases: Iterable[str]) -> bool:
-    return any(phrase in normalized for phrase in phrases)
-
-
-def evaluate_policy(texts: list[str]) -> tuple[bool, str, str]:
-    combined = "\n".join(texts)
-    normalized = normalize_text(combined)
-
-    has_president = has_any_phrase(normalized, PRESIDENT_TERMS)
-    has_argentina = has_any_phrase(normalized, ARGENTINA_TERMS)
-    has_milei = contains_milei_variant(normalized)
-
-    if (has_president and has_argentina) or (has_president and has_milei):
-        return False, "argentina_president", POLICY_MESSAGE
-
-    for rule_name, pattern in SECRET_RULES:
-        if pattern.search(combined):
-            return False, rule_name, DATA_LOSS_MESSAGE
-
-    return True, "allowed", "Solicitud permitida."
+def evaluate_policy(texts: list[str]) -> tuple[bool, str, str, list[str]]:
+    blocking, monitored = evaluate(STATE.rules, texts)
+    if blocking is not None:
+        return False, blocking.id, blocking.message, monitored
+    return True, "allowed", "Solicitud permitida.", monitored
 
 
 def audit_event(payload: dict[str, Any]) -> None:
@@ -216,7 +193,7 @@ def audit_event(payload: dict[str, Any]) -> None:
         return
 
 
-def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, texts: list[str], body: dict[str, Any]) -> tuple[str, str]:
+def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, texts: list[str], body: dict[str, Any], message: str = "", monitored: list[str] | None = None) -> tuple[str, str]:
     digest = hashlib.sha256("\n".join(texts).encode("utf-8", errors="replace")).hexdigest()[:16]
     decision_id = hashlib.sha256(f"{time.time_ns()}:{digest}".encode()).hexdigest()[:16]
     metadata = body.get("metadata", {}) if isinstance(body.get("metadata"), dict) else {}
@@ -249,16 +226,71 @@ def record_decision(*, allowed: bool, rule: str, endpoint: str, provider: str, t
         "filtered": not allowed,
         "rule": rule,
         "decision_id": decision_id,
-        "policy_message": "Solicitud permitida por Plano." if allowed else (POLICY_MESSAGE if rule == "argentina_president" else DATA_LOSS_MESSAGE),
+        "policy_message": "Solicitud permitida por Plano." if allowed else message,
         "status_code": 200 if allowed else 403,
         "streaming": bool(body.get("stream", False)),
         "state": "authorized" if allowed else "blocked",
-        "properties": {"filter": "argentina_president_guard", "audit_phase": metadata.get("audit_phase")},
+        "properties": {
+            "filter": "policy_guard",
+            "audit_phase": metadata.get("audit_phase"),
+            "rules_revision": STATE.revision,
+            "monitor_rules": ",".join(monitored or []) or None,
+        },
     }
     if metadata.get("client"):
         audit_payload["client"] = str(metadata["client"])
     audit_event(audit_payload)
     return decision_id, audit_id
+
+
+@app.post("/admin/reload")
+async def admin_reload(request: Request) -> dict[str, Any]:
+    """El dashboard llama aquí tras cada cambio para aplicar la regla de inmediato."""
+    require_admin(request)
+    refresh_rules(force=True)
+    return admin_state()
+
+
+@app.get("/admin/status")
+async def admin_status(request: Request) -> dict[str, Any]:
+    require_admin(request)
+    return admin_state()
+
+
+@app.post("/admin/test")
+async def admin_test(request: Request) -> dict[str, Any]:
+    """Prueba un texto contra las reglas activas o contra una regla en borrador, sin registrar nada."""
+    require_admin(request)
+    payload = await request.json()
+    text = str(payload.get("text") or "")[:20000]
+    draft = payload.get("rule")
+    if draft is not None:
+        errors = validate_rule(draft)
+        if errors:
+            return {"valid": False, "errors": errors}
+        rules: tuple[CompiledRule, ...] = (compile_rule({**draft, "enabled": True}),)
+    else:
+        rules = STATE.rules
+    blocking, monitored = evaluate(rules, [text])
+    return {
+        "valid": True,
+        "allowed": blocking is None,
+        "rule": blocking.id if blocking else None,
+        "message": blocking.message if blocking else None,
+        "monitored": monitored,
+        "normalized": normalize_text(text)[:500],
+    }
+
+
+def admin_state() -> dict[str, Any]:
+    return {
+        "revision": STATE.revision,
+        "source": STATE.source,
+        "active_rules": len(STATE.rules),
+        "invalid_rules": STATE.errors,
+        "loaded_at": STATE.loaded_at,
+        "last_sync_error": STATE.last_error,
+    }
 
 
 @app.post("/{path:path}")
@@ -275,7 +307,7 @@ async def guard(path: str, request: Request):
 
     texts = extract_user_texts(body)
     provider = str(body.get("metadata", {}).get("provider", body.get("model", "unknown"))) if isinstance(body, dict) else "unknown"
-    allowed, rule, message = evaluate_policy(texts)
+    allowed, rule, message, monitored = evaluate_policy(texts)
     decision_id, audit_id = record_decision(
         allowed=allowed,
         rule=rule,
@@ -283,6 +315,8 @@ async def guard(path: str, request: Request):
         provider=provider,
         texts=texts,
         body=body,
+        message=message,
+        monitored=monitored,
     )
 
     if not allowed:
@@ -297,7 +331,7 @@ async def guard(path: str, request: Request):
                     "audit_id": audit_id,
                 }
             },
-            headers={"x-plano-policy-decision": "deny", "x-plano-decision-id": decision_id},
+            headers={"x-plano-policy-decision": "deny", "x-plano-decision-id": decision_id, "x-plano-rules-revision": str(STATE.revision)},
         )
 
     if isinstance(body, dict):
@@ -309,7 +343,7 @@ async def guard(path: str, request: Request):
     return JSONResponse(
         status_code=200,
         content=body,
-        headers={"x-plano-policy-decision": "allow", "x-plano-decision-id": decision_id},
+        headers={"x-plano-policy-decision": "allow", "x-plano-decision-id": decision_id, "x-plano-rules-revision": str(STATE.revision)},
     )
 
 
@@ -321,7 +355,8 @@ async def index() -> dict[str, Any]:
         "health": "/health",
         "decisions": "/decisions",
         "metrics": "/metrics",
-        "configuration": "Editar policy-guard/app.py y recrear el servicio",
+        "configuration": "Reglas editables desde el dashboard de auditoría (/rules); recarga inmediata",
+        "rules_revision": STATE.revision,
     }
 
 

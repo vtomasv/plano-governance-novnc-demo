@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir --requirement requirements.txt
-COPY app.py ./
+COPY app.py engine.py default_rules.py ./
 
 USER 10001:10001
 EXPOSE 10500

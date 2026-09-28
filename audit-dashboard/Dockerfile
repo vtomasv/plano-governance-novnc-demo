@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     && mkdir -p /data /app/static \
     && chown -R audit:audit /data /app
 
-COPY --chown=audit:audit app.py ./
+COPY --chown=audit:audit app.py analytics.py rules_store.py ./
 COPY --chown=audit:audit static/ ./static/
 
 USER 10001:10001

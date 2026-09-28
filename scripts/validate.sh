@@ -33,6 +33,10 @@ python3 scripts/validate_mac_arm64.py /tmp/plano-governance-compose-mac-arm64.js
 (cd governed-agent && python3 -m pytest -q test_app.py)
 python3 -m py_compile \
   audit-dashboard/app.py \
+  audit-dashboard/analytics.py \
+  audit-dashboard/rules_store.py \
+  policy-guard/engine.py \
+  policy-guard/default_rules.py \
   policy-guard/app.py \
   provider-sim/app.py \
   governed-agent/app.py \

@@ -13,6 +13,8 @@ import secrets
 import sqlite3
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
@@ -20,7 +22,11 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
+
+import analytics
+import rules_store
 
 DATA_DIR = Path(os.getenv("AUDIT_DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / "audit.db"
@@ -31,7 +37,15 @@ DASHBOARD_PASSWORD = os.getenv("AUDIT_DASHBOARD_PASSWORD", "plano-demo")
 RETENTION_DAYS = max(1, int(os.getenv("AUDIT_RETENTION_DAYS", "7")))
 MAX_EVENTS = max(100, int(os.getenv("AUDIT_MAX_EVENTS", "10000")))
 MAX_TEXT_CHARS = max(1000, int(os.getenv("AUDIT_MAX_TEXT_CHARS", "50000")))
+GUARD_URL = os.getenv("POLICY_GUARD_URL", "http://policy-guard:10500").rstrip("/")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://host-publisher:11434")
+ANALYTICS_MODEL = os.getenv("ANALYTICS_MODEL", "qwen2.5:7b-instruct")
+ANALYTICS_ENABLED = os.getenv("ANALYTICS_ENABLED", "true").lower() == "true"
+ANALYTICS_IDLE_SECONDS = float(os.getenv("ANALYTICS_IDLE_SECONDS", "3"))
+ANALYTICS_BACKOFF_SECONDS = float(os.getenv("ANALYTICS_BACKOFF_SECONDS", "30"))
 DB_LOCK = threading.RLock()
+NO_STORE = {"Cache-Control": "no-store"}
+ANALYTICS_STATE: dict[str, Any] = {"worker": "stopped", "last_result": None, "last_at": None}
 STARTED_AT = time.time()
 
 SECRET_PATTERNS = [
@@ -179,6 +193,8 @@ def db() -> Iterator[sqlite3.Connection]:
 def init_db() -> None:
     with DB_LOCK, db() as connection:
         connection.executescript(SCHEMA)
+        rules_store.init(connection)
+        analytics.init(connection)
 
 
 def purge_retention(connection: sqlite3.Connection) -> None:
@@ -188,6 +204,7 @@ def purge_retention(connection: sqlite3.Connection) -> None:
         "DELETE FROM audit_events WHERE audit_id IN (SELECT audit_id FROM audit_events ORDER BY started_at DESC LIMIT -1 OFFSET ?)",
         (MAX_EVENTS,),
     )
+    connection.execute("DELETE FROM event_analysis WHERE audit_id NOT IN (SELECT audit_id FROM audit_events)")
 
 
 def row_to_dict(row: sqlite3.Row, *, detail: bool = True) -> dict[str, Any]:
@@ -291,9 +308,26 @@ def upsert_event(payload: dict[str, Any]) -> dict[str, Any]:
     return row_to_dict(row)
 
 
+def analytics_worker() -> None:
+    """Clasifica prompts pendientes uno a uno; Ollama procesa una petición a la vez."""
+    ANALYTICS_STATE["worker"] = "running"
+    while True:
+        try:
+            outcome = analytics.analyze_one(db, OLLAMA_URL, ANALYTICS_MODEL)
+        except Exception as exc:  # el worker nunca debe morir
+            outcome = "unavailable"
+            ANALYTICS_STATE["last_error"] = f"{type(exc).__name__}: {exc}"[:300]
+        ANALYTICS_STATE.update(last_result=outcome, last_at=utc_now())
+        if outcome in {"done", "error"}:
+            continue
+        time.sleep(ANALYTICS_BACKOFF_SECONDS if outcome == "unavailable" else ANALYTICS_IDLE_SECONDS)
+
+
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    if ANALYTICS_ENABLED:
+        threading.Thread(target=analytics_worker, name="analytics-worker", daemon=True).start()
 
 
 @app.get("/health")
@@ -391,9 +425,12 @@ def event_detail(audit_id: str, request: Request) -> dict[str, Any]:
     require_dashboard(request)
     with db() as connection:
         row = connection.execute("SELECT * FROM audit_events WHERE audit_id=?", (audit_id,)).fetchone()
+        analysis = connection.execute("SELECT * FROM event_analysis WHERE audit_id=?", (audit_id,)).fetchone() if row else None
     if row is None:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
-    return row_to_dict(row)
+    item = row_to_dict(row)
+    item["analysis"] = dict(analysis) if analysis else None
+    return item
 
 
 @app.get("/api/summary")
@@ -449,4 +486,230 @@ def delete_events(request: Request) -> JSONResponse:
     require_dashboard(request)
     with DB_LOCK, db() as connection:
         deleted = connection.execute("DELETE FROM audit_events").rowcount
+        connection.execute("DELETE FROM event_analysis")
     return JSONResponse({"status": "ok", "deleted": deleted})
+
+
+# --- Gestión de reglas ------------------------------------------------------------------
+
+
+class GuardUnavailable(Exception):
+    pass
+
+
+def guard_request(path: str, payload: dict[str, Any] | None = None, method: str = "POST", timeout: float = 5.0) -> dict[str, Any]:
+    request = urllib.request.Request(
+        f"{GUARD_URL}{path}",
+        data=None if payload is None else json.dumps(payload).encode("utf-8"),
+        method=method,
+        headers={"content-type": "application/json", "x-audit-token": INGEST_TOKEN},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read())
+    except Exception as exc:
+        raise GuardUnavailable(f"{type(exc).__name__}: {exc}"[:200]) from exc
+
+
+def validate_with_guard(rule: dict[str, Any]) -> None:
+    """El policy-guard es quien ejecuta las reglas, así que es quien decide si una regla es válida."""
+    try:
+        result = guard_request("/admin/test", {"rule": rule, "text": ""})
+    except GuardUnavailable as exc:
+        raise HTTPException(status_code=503, detail=f"No se pudo validar: policy-guard no responde ({exc})")
+    if not result.get("valid"):
+        raise HTTPException(status_code=422, detail={"errors": result.get("errors", [])})
+
+
+def push_to_guard(revision: int) -> dict[str, Any]:
+    """Aplica la regla de inmediato. Si falla, el guard la tomará por sondeo en pocos segundos."""
+    try:
+        state = guard_request("/admin/reload")
+        return {"applied": state.get("revision") == revision, "guard": state}
+    except GuardUnavailable as exc:
+        return {"applied": False, "guard": None, "warning": f"policy-guard no respondió; se sincronizará por sondeo ({exc})"}
+
+
+@app.get("/policy/rules")
+def policy_rules(request: Request) -> dict[str, Any]:
+    require_ingest(request)
+    with db() as connection:
+        return {
+            "revision": rules_store.revision(connection),
+            "needs_seed": rules_store.needs_seed(connection),
+            "rules": rules_store.list_rules(connection),
+        }
+
+
+@app.post("/policy/seed")
+async def policy_seed(request: Request) -> dict[str, Any]:
+    require_ingest(request)
+    payload = await request.json()
+    rules = payload.get("rules") if isinstance(payload, dict) else None
+    if not isinstance(rules, list):
+        raise HTTPException(status_code=422, detail="Se esperaba {'rules': [...]}")
+    with DB_LOCK, db() as connection:
+        return {"revision": rules_store.seed(connection, rules)}
+
+
+@app.get("/rules")
+def rules_page(request: Request) -> FileResponse:
+    require_dashboard(request)
+    return FileResponse(STATIC_DIR / "rules.html", headers=NO_STORE)
+
+
+@app.get("/api/rules")
+def api_list_rules(request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    with db() as connection:
+        rules = rules_store.list_rules(connection)
+        revision = rules_store.revision(connection)
+    try:
+        guard = guard_request("/admin/status", method="GET", timeout=3)
+    except GuardUnavailable as exc:
+        guard = {"error": str(exc)}
+    return {"revision": revision, "rules": rules, "guard": guard}
+
+
+def _save(rule: dict[str, Any], actor: str) -> dict[str, Any]:
+    # Bloqueante a propósito: debe ejecutarse en un threadpool. El guard, al recargar, vuelve a
+    # llamar a /policy/rules; si esto corriera en el event loop, esa llamada quedaría bloqueada.
+    validate_with_guard(rule)
+    with DB_LOCK, db() as connection:
+        saved, revision = rules_store.save_rule(connection, rule, actor)
+    return {"rule": saved, "revision": revision, **push_to_guard(revision)}
+
+
+@app.post("/api/rules")
+async def api_create_rule(request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    rule = await request.json()
+    if not isinstance(rule, dict):
+        raise HTTPException(status_code=422, detail="La regla debe ser un objeto JSON")
+    with db() as connection:
+        if rules_store.get_rule(connection, str(rule.get("id"))):
+            raise HTTPException(status_code=409, detail="Ya existe una regla con ese id")
+    return await run_in_threadpool(_save, rule, DASHBOARD_USER)
+
+
+@app.put("/api/rules/{rule_id}")
+async def api_update_rule(rule_id: str, request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    rule = await request.json()
+    if not isinstance(rule, dict):
+        raise HTTPException(status_code=422, detail="La regla debe ser un objeto JSON")
+    with db() as connection:
+        if rules_store.get_rule(connection, rule_id) is None:
+            raise HTTPException(status_code=404, detail="Regla no encontrada")
+    return await run_in_threadpool(_save, {**rule, "id": rule_id}, DASHBOARD_USER)
+
+
+@app.delete("/api/rules/{rule_id}")
+def api_delete_rule(rule_id: str, request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    with DB_LOCK, db() as connection:
+        revision = rules_store.delete_rule(connection, rule_id, DASHBOARD_USER)
+    if revision is None:
+        raise HTTPException(status_code=404, detail="Regla no encontrada")
+    return {"deleted": rule_id, "revision": revision, **push_to_guard(revision)}
+
+
+@app.get("/api/rules/{rule_id}/history")
+def api_rule_history(rule_id: str, request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    with db() as connection:
+        return {"rule_id": rule_id, "history": rules_store.rule_history(connection, rule_id)}
+
+
+@app.post("/api/rules/{rule_id}/rollback")
+async def api_rollback_rule(rule_id: str, request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    payload = await request.json()
+    with db() as connection:
+        snapshot = rules_store.rollback_snapshot(connection, rule_id, int(payload.get("version", 0)))
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail="Versión no encontrada")
+    return await run_in_threadpool(_save, snapshot, DASHBOARD_USER)
+
+
+@app.post("/api/rules/test")
+async def api_test_rule(request: Request) -> dict[str, Any]:
+    """Prueba un texto contra las reglas activas, o contra una regla en borrador antes de guardarla."""
+    require_dashboard(request)
+    payload = await request.json()
+    body: dict[str, Any] = {"text": str(payload.get("text") or "")}
+    if isinstance(payload.get("rule"), dict):
+        body["rule"] = payload["rule"]
+    try:
+        return await run_in_threadpool(guard_request, "/admin/test", body)
+    except GuardUnavailable as exc:
+        raise HTTPException(status_code=503, detail=f"policy-guard no responde ({exc})")
+
+
+# --- Analítica de uso ---------------------------------------------------------------------
+
+
+@app.get("/usage")
+def usage_page(request: Request) -> FileResponse:
+    require_dashboard(request)
+    return FileResponse(STATIC_DIR / "usage.html", headers=NO_STORE)
+
+
+def _taxonomy() -> dict[str, Any]:
+    return {
+        "tasks": analytics.TASK_CATEGORIES,
+        "occupations": analytics.OCCUPATION_GROUPS,
+        "patterns": {key: {"mode": value[0], "description": value[1]} for key, value in analytics.PATTERNS.items()},
+    }
+
+
+@app.get("/api/analytics/status")
+def analytics_status(request: Request) -> dict[str, Any]:
+    require_dashboard(request)
+    with db() as connection:
+        counts = {
+            row["status"]: row["n"]
+            for row in connection.execute("SELECT status, COUNT(*) n FROM event_analysis GROUP BY status").fetchall()
+        }
+        pending = connection.execute(
+            "SELECT COUNT(*) FROM audit_events e LEFT JOIN event_analysis a ON a.audit_id=e.audit_id WHERE e.prompt_chars>0 AND a.audit_id IS NULL"
+        ).fetchone()[0]
+    return {
+        "enabled": ANALYTICS_ENABLED,
+        "model": ANALYTICS_MODEL,
+        "ollama_url": OLLAMA_URL,
+        "ollama": analytics.ollama_status(OLLAMA_URL, ANALYTICS_MODEL),
+        "worker": ANALYTICS_STATE,
+        "done": counts.get("done", 0),
+        "failed": counts.get("error", 0),
+        "pending": pending,
+        "taxonomy": _taxonomy(),
+    }
+
+
+@app.get("/api/analytics/summary")
+def analytics_summary(request: Request, hours: int = Query(168, ge=1, le=8760)) -> dict[str, Any]:
+    require_dashboard(request)
+    with db() as connection:
+        return analytics.summary(connection, hours)
+
+
+@app.get("/api/analytics/explorer")
+def analytics_explorer(request: Request, occupation: str, hours: int = Query(168, ge=1, le=8760)) -> dict[str, Any]:
+    require_dashboard(request)
+    with db() as connection:
+        return analytics.explorer(connection, hours, occupation)
+
+
+@app.post("/api/analytics/reanalyze")
+async def analytics_reanalyze(request: Request) -> dict[str, Any]:
+    """Vuelve a clasificar: solo los fallidos, o todo (por ejemplo tras cambiar de modelo)."""
+    require_dashboard(request)
+    payload = await request.json()
+    scope = payload.get("scope", "errors") if isinstance(payload, dict) else "errors"
+    if scope not in {"errors", "all"}:
+        raise HTTPException(status_code=422, detail="scope debe ser 'errors' o 'all'")
+    with DB_LOCK, db() as connection:
+        query = "DELETE FROM event_analysis" + (" WHERE status='error'" if scope == "errors" else "")
+        cleared = connection.execute(query).rowcount
+    return {"status": "ok", "queued": cleared}

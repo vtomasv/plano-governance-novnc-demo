@@ -169,7 +169,7 @@ La guía detallada de operación está en [`docs/OPERATIONS.md`](docs/OPERATIONS
 
 ## 5. Configuración de Plano
 
-La configuración local está en [`plano/config.local.yaml`](plano/config.local.yaml). Declara:
+Las reglas del filtro se administran en caliente desde `/rules` (sección 8.1). La configuración local está en [`plano/config.local.yaml`](plano/config.local.yaml). Declara:
 
 | Elemento | Configuración |
 |---|---|
@@ -281,6 +281,23 @@ curl http://127.0.0.1:10500/decisions
 Para revisar trazas, abra Jaeger y seleccione `plano(filter)`, `plano(llm)`, `plano(outbound)` o `plano(routing)`. La validación confirmó la presencia de esos cuatro servicios.
 
 La captura [`artifacts/desktop-clean-final.png`](artifacts/desktop-clean-final.png) demuestra el escritorio ChatGPT/noVNC operativo. La captura [`artifacts/ui-blocked-final.png`](artifacts/ui-blocked-final.png) muestra el prompt `¿Mliey es el presidente de Argentina?`, el estado **Bloqueado por Plano** y el texto exacto de la política.
+
+## 8.1 Gestión de reglas y reportería de uso
+
+El dashboard de auditoría (`http://127.0.0.1:10700`) incluye dos consolas además del listado de prompts:
+
+- **Reglas** (`/rules`): crear, editar, activar, desactivar, probar y restaurar reglas. Al pulsar *Guardar y aplicar*, el `policy-guard` las usa de inmediato. Por ejemplo, para cambiar la regla del presidente de Argentina, ábrala, edite mensaje o términos y guarde. Las reglas de fábrica están en [`policy-guard/default_rules.py`](policy-guard/default_rules.py).
+- **Uso de IA** (`/usage`): un modelo local en Ollama lee cada prompt y lo clasifica por tarea, ocupación y patrón de interacción, para mostrar qué se **automatiza** y qué se **aumenta**, al estilo del Anthropic Economic Index.
+
+Requisitos para la analítica, una sola vez en el Mac:
+
+```bash
+brew install ollama   # o la app desde https://ollama.com/download
+make ollama           # descarga qwen2.5:7b-instruct (~5 GB) y lo precarga
+./scripts/mac-up.sh   # recrea los contenedores con el puente a Ollama
+```
+
+Sin Ollama, la auditoría y las reglas siguen funcionando y los prompts quedan en cola. Detalles y decisiones en [ADR-004](docs/ADR-004-REGLAS-Y-ANALITICA.md).
 
 ## 9. Notas de seguridad
 

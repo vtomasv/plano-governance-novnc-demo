@@ -9,6 +9,10 @@ services:
 
   audit-dashboard:
     ports: !reset []
+    # Red interna exclusiva para llegar al Ollama del host; los escritorios no participan.
+    networks:
+      - control
+      - analytics
 
   policy-guard:
     ports: !reset []
@@ -51,6 +55,8 @@ services:
     # arrancar antes que los backends y marcarlos UP mediante DNS/healthchecks.
     # Un backend lento nunca debe impedir que Docker cree el único publisher.
     user: haproxy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./host-publisher/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
@@ -76,6 +82,7 @@ services:
       - control
       - upstream-sim
       - publish
+      - analytics
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
@@ -94,3 +101,9 @@ services:
 networks:
   publish:
     driver: bridge
+  analytics:
+    # Subred fija: haproxy.cfg solo acepta conexiones al puente de Ollama desde este rango.
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.240.0/28

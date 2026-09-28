@@ -83,6 +83,11 @@ services:
       AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
       AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-7}
       AUDIT_MAX_EVENTS: ${AUDIT_MAX_EVENTS:-10000}
+      POLICY_GUARD_URL: http://policy-guard:10500
+      # Ollama corre nativo en el host (GPU Metal). En Mac se alcanza por el puente de host-publisher.
+      OLLAMA_URL: ${OLLAMA_URL:-http://host-publisher:11434}
+      ANALYTICS_MODEL: ${ANALYTICS_MODEL:-qwen2.5:7b-instruct}
+      ANALYTICS_ENABLED: ${ANALYTICS_ENABLED:-true}
     volumes:
       - audit-data:/data
     ports:
@@ -99,6 +104,7 @@ services:
     environment:
       LOG_PROMPT_BODIES: ${LOG_PROMPT_BODIES:-false}
       AUDIT_URL: http://audit-dashboard:10700/ingest
+      RULES_BASE_URL: http://audit-dashboard:10700
       AUDIT_INGEST_TOKEN: ${AUDIT_INGEST_TOKEN:-plano-audit-ingest-demo}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${POLICY_GUARD_PORT:-10500}:10500"

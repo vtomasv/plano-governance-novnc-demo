@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plano · Uso de IA</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1a2b;--panel2:#101f33;--line:#22344d;--text:#e7eef8;--muted:#8ea2bb;--cyan:#33d4c6;--blue:#5f8cff;--green:#41d48a;--red:#ff627d;--amber:#ffbf5a;--auto:#ff9f5a;--aug:#33d4c6}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 25% -15%,#16334e 0,transparent 36%),var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,select{font:inherit;color:inherit}a{color:inherit;text-decoration:none}
+.topbar{height:70px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--line);background:rgba(7,17,31,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+.brand{display:flex;gap:12px;align-items:center}.mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),var(--blue));display:grid;place-items:center;font-weight:800;color:#04101d}
+h1{font-size:16px;margin:0}.brand p{margin:0;color:var(--muted);font-size:12px}
+nav{display:flex;gap:6px}nav a{padding:8px 14px;border-radius:9px;color:var(--muted)}nav a.active,nav a:hover{background:var(--panel2);color:var(--text)}
+.layout{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.btn,select{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 12px;cursor:pointer}.btn:hover{border-color:var(--cyan)}.btn.small{padding:4px 10px;font-size:12px}
+.banner{padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel);margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.banner.ok{border-color:#1f6b4a}.banner.warn{border-color:#8a6420;background:#2a2110}.banner.err{border-color:#8a2b3d;background:#2a1018}
+.banner code{background:var(--bg);padding:1px 7px;border-radius:6px;border:1px solid var(--line)}
+.head{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px}.head h2{margin:0;font-size:16px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.card,.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}.value{font-size:28px;font-weight:700;margin-top:2px}.hint{color:var(--muted);font-size:12px}
+.auto{color:var(--auto)}.aug{color:var(--aug)}
+.cols{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-bottom:18px}
+.split{height:10px;border-radius:99px;overflow:hidden;display:flex;background:#1a2a40}.split i{display:block;height:100%}.split .a{background:var(--auto)}.split .g{background:var(--aug)}.split .o{background:#4a5a72}
+.row{display:grid;grid-template-columns:minmax(140px,1.2fr) 2fr 60px;gap:12px;align-items:center;padding:7px 8px;border-radius:9px}.row.click{cursor:pointer}.row.click:hover,.row.sel{background:var(--panel2)}
+.row .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .c{text-align:right;color:var(--muted)}
+.legend{display:flex;gap:16px;color:var(--muted);font-size:12px;margin:0 0 10px}.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+.pat{display:grid;grid-template-columns:150px 1fr 44px;gap:10px;align-items:center;padding:6px 0}.pat .bar{height:8px;border-radius:99px;background:#1a2a40;overflow:hidden}.pat .bar i{display:block;height:100%}
+.tag{font-size:11px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}.tag.a{color:var(--auto);border-color:#7a5030}.tag.g{color:var(--aug);border-color:#1f6b66}
+.task{padding:12px 0;border-bottom:1px solid var(--line)}.task:last-child{border-bottom:0}.task h4{margin:0 0 6px;font-size:14px;display:flex;justify-content:space-between;gap:10px}
+.ex{margin:8px 0 0;padding:0;list-style:none;color:var(--muted);font-size:13px}.ex li:before{content:"›  ";color:var(--cyan)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:90px}.spark div{flex:1;min-width:6px;max-width:44px;background:#1a2a40;border-radius:3px 3px 0 0;position:relative;display:flex;flex-direction:column-reverse}.spark div i{display:block;width:100%}.spark .a{background:var(--auto)}.spark .g{background:var(--aug)}
+.empty{color:var(--muted);padding:24px;text-align:center}
+.note{color:var(--muted);font-size:12px;margin-top:20px}
+@media(max-width:900px){.cards{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}.topbar{padding:0 14px}.layout{padding:16px 14px}.pat{grid-template-columns:110px 1fr 40px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="mark">P</div><div><h1>Plano · Uso de IA</h1><p>Para qué se usa la IA: tareas automatizadas y aumentadas (análisis local)</p></div></div>
+  <nav><a href="/">Auditoría</a><a href="/rules">Reglas</a><a class="active" href="/usage">Uso de IA</a></nav>
+</header>
+<div class="layout">
+  <div id="banner" class="banner"><span id="bannerText">Cargando…</span><span><button class="btn small" id="retryBtn" hidden>Reintentar fallidos</button> <button class="btn small" id="reallBtn" title="Vuelve a clasificar todo, por ejemplo tras cambiar de modelo">Reanalizar todo</button></span></div>
+  <div class="head"><h2>Resumen</h2><select id="hours"><option value="24">24 horas</option><option value="168" selected>7 días</option><option value="720">30 días</option></select></div>
+  <section class="cards">
+    <div class="card"><div class="label">Prompts analizados</div><div class="value" id="kDone">—</div><div class="hint" id="kDoneHint"></div></div>
+    <div class="card"><div class="label">Automatización</div><div class="value auto" id="kAuto">—</div><div class="hint">el usuario delega la tarea</div></div>
+    <div class="card"><div class="label">Aumentación</div><div class="value aug" id="kAug">—</div><div class="hint">el usuario colabora con la IA</div></div>
+    <div class="card"><div class="label">Sin tarea de trabajo</div><div class="value" id="kOther">—</div><div class="hint">saludos y charla casual</div></div>
+  </section>
+
+  <div class="cols">
+    <div class="panel"><div class="head"><h2>Tareas</h2></div>
+      <div class="legend"><span><b style="background:var(--auto)"></b>Automatización</span><span><b style="background:var(--aug)"></b>Aumentación</span><span><b style="background:#4a5a72"></b>Otro</span></div>
+      <div id="tasks"></div></div>
+    <div class="panel"><div class="head"><h2>Patrones de interacción</h2></div><div id="patterns"></div>
+      <div class="head" style="margin-top:20px"><h2>Contexto de uso</h2></div><div id="contexts"></div></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel"><div class="head"><h2>Explorador por ocupación</h2><span class="muted" id="occHint">Elija una ocupación</span></div>
+      <div id="occs"></div></div>
+    <div class="panel"><div class="head"><h2 id="expTitle">Tareas de la ocupación</h2></div><div id="explorer"><div class="empty">Seleccione una ocupación para ver qué tareas hace y cuánto delega.</div></div></div>
+  </div>
+
+  <div class="cols">
+    <div class="panel"><div class="head"><h2>Evolución diaria</h2><span class="muted">automatización vs aumentación</span></div><div class="spark" id="timeline"></div></div>
+    <div class="panel"><div class="head"><h2>Por proveedor</h2></div><div id="providers"></div></div>
+  </div>
+  <p class="note">Clasificación con un modelo local (Ollama): los prompts ya redactados no salen del equipo. Metodología basada en el Anthropic Economic Index: <b>directiva</b> y <b>ciclo de retroalimentación</b> cuentan como automatización; <b>aprendizaje</b>, <b>iteración</b> y <b>validación</b> como aumentación. Es una inferencia estadística del modelo, no una medición exacta.</p>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+async function api(path,options){const target=new URL(path,location.href);target.username='';target.password='';const r=await fetch(target.toString(),options);if(!r.ok){let m=`HTTP ${r.status}`;try{m=(await r.json()).detail||m}catch{}throw new Error(m)}return r.json()}
+const PATTERN_LABEL={directiva:'Directiva',ciclo_de_retroalimentacion:'Ciclo de retroalimentación',aprendizaje:'Aprendizaje',iteracion:'Iteración',validacion:'Validación',sin_tarea:'Sin tarea'};
+const CONTEXT_LABEL={trabajo:'Trabajo',educacion:'Educación',personal:'Personal',no_claro:'No claro'};
+const NAME_LABEL={desarrollo_de_software:'Desarrollo de software',analisis_de_datos:'Análisis de datos',redaccion_y_edicion:'Redacción y edición',traduccion_e_idiomas:'Traducción e idiomas',investigacion_y_consulta:'Investigación y consulta',educacion_y_aprendizaje:'Educación y aprendizaje',atencion_al_cliente:'Atención al cliente',negocios_y_finanzas:'Negocios y finanzas',legal_y_cumplimiento:'Legal y cumplimiento',salud_y_bienestar:'Salud y bienestar',diseno_y_creatividad:'Diseño y creatividad',planificacion_y_productividad:'Planificación y productividad',seguridad_informatica:'Seguridad informática',politica_y_actualidad:'Política y actualidad',conversacion_y_personal:'Conversación y personal',otro:'Otro',
+informatica_y_matematicas:'Informática y matemáticas',gerencia:'Gerencia',educacion_y_bibliotecas:'Educación y bibliotecas',artes_y_medios:'Artes y medios',legal:'Legal',salud:'Salud',administracion_y_oficina:'Administración y oficina',ventas_y_marketing:'Ventas y marketing',ingenieria_y_ciencias:'Ingeniería y ciencias',servicios_y_otros:'Servicios y otros',estudiante_o_personal:'Estudiante o personal',no_determinado:'No determinado'};
+const pretty=k=>PATTERN_LABEL[k]||CONTEXT_LABEL[k]||NAME_LABEL[k]||String(k||'—').replace(/_/g,' ').replace(/^./,c=>c.toUpperCase());
+let taxonomy=null,selected=null;
+
+const split=r=>{const t=r.count||1;return `<div class="split" title="Automatización ${r.automation_pct}% · Aumentación ${r.augmentation_pct}%"><i class="a" style="width:${100*r.automation/t}%"></i><i class="g" style="width:${100*r.augmentation/t}%"></i><i class="o" style="width:${100*r.other/t}%"></i></div>`};
+const rows=(items,click)=>items.length?items.map(r=>`<div class="row ${click?'click':''} ${click&&selected===r.name?'sel':''}" data-name="${esc(r.name)}" title="${esc(taxonomy?.tasks?.[r.name]||taxonomy?.occupations?.[r.name]||'')}"><span class="n">${esc(pretty(r.name))}</span>${split(r)}<span class="c">${r.count}</span></div>`).join(''):'<div class="empty">Sin datos todavía.</div>';
+
+async function loadStatus(){
+  const s=await api('/api/analytics/status');taxonomy=s.taxonomy;
+  const b=$('#banner'),o=s.ollama;
+  if(!s.enabled){b.className='banner warn';$('#bannerText').textContent='La analítica está desactivada (ANALYTICS_ENABLED=false).'}
+  else if(!o.reachable){b.className='banner err';$('#bannerText').innerHTML=`No se alcanza Ollama en <code>${esc(s.ollama_url)}</code>. Inícielo en el Mac y ejecute <code>make ollama</code>. ${s.pending} prompts esperan análisis.`}
+  else if(!o.model_available){b.className='banner warn';$('#bannerText').innerHTML=`Ollama responde, pero falta el modelo <code>${esc(s.model)}</code>. Ejecute <code>make ollama</code> para descargarlo.`}
+  else{b.className='banner ok';$('#bannerText').innerHTML=`Ollama activo · modelo <code>${esc(s.model)}</code> · ${s.done} analizados · ${s.pending} en cola${s.failed?` · ${s.failed} fallidos`:''}`}
+  $('#retryBtn').hidden=!s.failed;
+}
+async function load(){
+  try{
+    await loadStatus();
+    const d=await api('/api/analytics/summary?hours='+$('#hours').value),t=d.totals;
+    $('#kDone').textContent=t.count.toLocaleString();$('#kDoneHint').textContent=`de ${t.events} con contenido · ${t.pending} pendientes`;
+    $('#kAuto').textContent=t.automation_pct+'%';$('#kAug').textContent=t.augmentation_pct+'%';$('#kOther').textContent=t.count?Math.round(100*t.other/t.count)+'%':'—';
+    $('#tasks').innerHTML=rows(d.tasks);
+    const pmax=Math.max(1,...d.patterns.map(p=>p.count));
+    $('#patterns').innerHTML=d.patterns.length?d.patterns.map(p=>{const m=taxonomy.patterns[p.name]?.mode;const c=m==='automatizacion'?'var(--auto)':m==='aumentacion'?'var(--aug)':'#4a5a72';
+      return `<div class="pat" title="${esc(taxonomy.patterns[p.name]?.description||'')}"><span>${esc(pretty(p.name))} <span class="tag ${m==='automatizacion'?'a':m==='aumentacion'?'g':''}">${m==='automatizacion'?'auto':m==='aumentacion'?'aum':'—'}</span></span><div class="bar"><i style="width:${100*p.count/pmax}%;background:${c}"></i></div><span class="muted" style="text-align:right">${p.count}</span></div>`}).join(''):'<div class="empty">Sin datos todavía.</div>';
+    const cmax=Math.max(1,...d.contexts.map(p=>p.count));
+    $('#contexts').innerHTML=d.contexts.map(p=>`<div class="pat"><span>${esc(pretty(p.name))}</span><div class="bar"><i style="width:${100*p.count/cmax}%;background:var(--blue)"></i></div><span class="muted" style="text-align:right">${p.count}</span></div>`).join('');
+    $('#occs').innerHTML=rows(d.occupations,true);$('#providers').innerHTML=rows(d.providers);
+    const tm=Math.max(1,...d.timeline.map(x=>x.count));
+    $('#timeline').innerHTML=d.timeline.slice(-30).map(x=>`<div title="${esc(x.name)} · ${x.count} prompts · ${x.automation_pct}% automatizado" style="height:${Math.max(6,100*x.count/tm)}%"><i class="a" style="height:${x.automation_pct}%"></i><i class="g" style="height:${x.augmentation_pct}%"></i></div>`).join('')||'<div class="empty" style="width:100%">Sin datos todavía.</div>';
+    if(selected)loadExplorer(selected);
+  }catch(e){$('#banner').className='banner err';$('#bannerText').textContent='Error: '+e.message}
+}
+async function loadExplorer(name){
+  selected=name;$('#expTitle').textContent='Tareas: '+pretty(name);$('#occHint').textContent=taxonomy?.occupations?.[name]||'';
+  document.querySelectorAll('#occs .row').forEach(r=>r.classList.toggle('sel',r.dataset.name===name));
+  const d=await api(`/api/analytics/explorer?occupation=${encodeURIComponent(name)}&hours=${$('#hours').value}`);
+  $('#explorer').innerHTML=d.tasks.length?d.tasks.map(t=>`<div class="task"><h4><span>${esc(pretty(t.name))}</span><span class="muted">${t.count} · <span class="auto">${t.automation_pct}% auto</span> · <span class="aug">${t.augmentation_pct}% aum</span></span></h4>${split(t)}${t.examples.length?`<ul class="ex">${t.examples.map(e=>`<li>${esc(e.text)}${e.count>1?` <span class="muted">×${e.count}</span>`:''}</li>`).join('')}</ul>`:''}</div>`).join(''):'<div class="empty">Sin tareas para esta ocupación.</div>';
+}
+$('#occs').addEventListener('click',e=>{const r=e.target.closest('.row.click');if(r)loadExplorer(r.dataset.name).catch(err=>alert(err.message))});
+$('#hours').onchange=load;
+async function reanalyze(scope){await api('/api/analytics/reanalyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({scope})});load()}
+$('#retryBtn').onclick=()=>reanalyze('errors');
+$('#reallBtn').onclick=()=>{if(confirm('¿Reclasificar todos los prompts con el modelo actual? Puede tardar varios minutos.'))reanalyze('all')};
+load();setInterval(load,15000);
+</script>
+</body>
+</html>

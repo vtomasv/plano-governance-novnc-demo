@@ -255,7 +255,7 @@ async def config() -> dict[str, Any]:
         "mitmweb_password_source": ".env: MITMWEB_PASSWORD",
         "plano_config_file": "plano/config.local.yaml",
         "port_config_file": ".env",
-        "policy_source": "policy-guard/app.py",
+        "policy_source": "Dashboard de auditoría /rules (reglas editables, recarga inmediata)",
         "apply_command": "./scripts/mac-up.sh" if os.getenv("INCLUDE_HOST_PUBLISHER", "false").lower() == "true" else "./scripts/up.sh",
         "publication_mode": "single-haproxy" if os.getenv("INCLUDE_HOST_PUBLISHER", "false").lower() == "true" else "direct-bindings",
         "hostname": socket.gethostname(),

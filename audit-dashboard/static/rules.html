@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plano · Reglas de gobierno</title>
+<style>
+:root{--bg:#07111f;--panel:#0d1a2b;--panel2:#101f33;--line:#22344d;--text:#e7eef8;--muted:#8ea2bb;--cyan:#33d4c6;--blue:#5f8cff;--green:#41d48a;--red:#ff627d;--amber:#ffbf5a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 25% -15%,#16334e 0,transparent 36%),var(--bg);color:var(--text);font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}a{color:inherit;text-decoration:none}
+.topbar{height:70px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;border-bottom:1px solid var(--line);background:rgba(7,17,31,.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+.brand{display:flex;gap:12px;align-items:center}.mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),var(--blue));display:grid;place-items:center;font-weight:800;color:#04101d}
+h1{font-size:16px;margin:0}.brand p{margin:0;color:var(--muted);font-size:12px}
+nav{display:flex;gap:6px}nav a{padding:8px 14px;border-radius:9px;color:var(--muted)}nav a.active,nav a:hover{background:var(--panel2);color:var(--text)}
+.layout{max-width:1280px;margin:0 auto;padding:24px 28px 60px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer}.btn:hover{border-color:var(--cyan)}
+.btn.primary{background:var(--cyan);color:#04101d;border-color:var(--cyan);font-weight:700}.btn.danger{color:var(--red)}.btn.small{padding:4px 10px;font-size:12px}.btn:disabled{opacity:.5;cursor:default}
+.banner{padding:12px 16px;border-radius:12px;border:1px solid var(--line);background:var(--panel);margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.ok{border-color:#1f6b4a}.banner.warn{border-color:#8a6420;background:#2a2110}.banner.err{border-color:#8a2b3d;background:#2a1018}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green)}.warn .dot{background:var(--amber)}.err .dot{background:var(--red)}
+.head{display:flex;justify-content:space-between;align-items:center;margin:8px 0 14px}.head h2{margin:0;font-size:18px}
+.muted{color:var(--muted)}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+tr:last-child td{border-bottom:0}tr.row:hover{background:var(--panel2);cursor:pointer}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line)}.badge.enforce{color:var(--red);border-color:#7a2a3a}.badge.monitor{color:var(--amber);border-color:#7a5a20}.badge.off{color:var(--muted)}
+.switch{position:relative;width:38px;height:22px;display:inline-block}.switch input{opacity:0;width:0;height:0}.switch span{position:absolute;inset:0;background:#26374f;border-radius:99px;transition:.15s;cursor:pointer}.switch span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}.switch input:checked+span{background:var(--green)}.switch input:checked+span:before{transform:translateX(16px)}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.15s;z-index:9}.backdrop.open{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(760px,100%);background:var(--panel);border-left:1px solid var(--line);transform:translateX(100%);transition:.2s;z-index:10;display:flex;flex-direction:column}.drawer.open{transform:none}
+.drawer-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.drawer-head h2{margin:0;font-size:17px}
+.drawer-body{padding:20px 22px;overflow:auto;flex:1}.drawer-foot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;align-items:center}
+label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+input[type=text],input[type=number],select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 10px}
+textarea{resize:vertical;min-height:64px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.clause{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0;background:var(--panel2)}.clause-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600}
+.group{border:1px dashed var(--line);border-radius:10px;padding:10px;margin:8px 0;background:var(--bg)}
+.and{text-align:center;color:var(--cyan);font-size:11px;letter-spacing:.15em;margin:2px 0}
+.help{font-size:12px;color:var(--muted);margin:2px 0 8px}
+.test{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:16px}
+.result{margin-top:10px;padding:10px 12px;border-radius:9px;font-size:13px}.result.block{background:#2a1018;border:1px solid #8a2b3d}.result.pass{background:#0f2a1f;border:1px solid #1f6b4a}
+.errlist{color:var(--red);font-size:13px;margin:10px 0;padding-left:18px}
+.hist{border-left:2px solid var(--line);padding:4px 0 4px 12px;margin:8px 0;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.chips{display:flex;gap:4px;flex-wrap:wrap}.chip{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 7px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}.topbar{padding:0 14px}.layout{padding:16px 14px}th:nth-child(4),td:nth-child(4){display:none}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="mark">P</div><div><h1>Plano · Gobierno</h1><p>Reglas de política aplicadas en tiempo real</p></div></div>
+  <nav><a href="/">Auditoría</a><a class="active" href="/rules">Reglas</a><a href="/usage">Uso de IA</a></nav>
+</header>
+<div class="layout">
+  <div id="banner" class="banner"><span class="dot"></span><span id="bannerText">Cargando…</span></div>
+  <div class="head"><h2>Reglas</h2><div style="display:flex;gap:8px"><button class="btn" id="testAllBtn">Probar texto</button><button class="btn primary" id="newBtn">Nueva regla</button></div></div>
+  <table>
+    <thead><tr><th>Activa</th><th>Regla</th><th>Modo</th><th>Mensaje al usuario</th><th>Prioridad</th><th>Versión</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p class="muted" style="margin-top:12px">Las reglas se evalúan por prioridad (menor número primero). Una regla se dispara si <b>alguna cláusula</b> se cumple; una cláusula se cumple si <b>todos sus grupos</b> coinciden; un grupo coincide si aparece <b>alguno</b> de sus términos.</p>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head"><h2 id="drawerTitle">Regla</h2><button class="btn small" id="closeBtn">Cerrar</button></div>
+  <div class="drawer-body" id="drawerBody"></div>
+  <div class="drawer-foot"><span class="muted" id="saveNote"></span><button class="btn danger" id="deleteBtn" hidden>Eliminar</button><button class="btn primary" id="saveBtn">Guardar y aplicar</button></div>
+</aside>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+async function api(path,options={}){
+  const target=new URL(path,location.href);target.username='';target.password='';
+  const r=await fetch(target.toString(),{...options,headers:{'content-type':'application/json',...(options.headers||{})}});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){const d=data.detail;const e=new Error(typeof d==='string'?d:(d&&d.errors?d.errors.join('\n'):`HTTP ${r.status}`));e.errors=d&&d.errors;throw e}
+  return data;
+}
+let rules=[],draft=null,isNew=false,history=[];
+
+const blankGroup=()=>({label:'',terms:[],fuzzy_terms:[],regex:[],case_sensitive:false});
+const blankRule=()=>({id:'',name:'',description:'',enabled:true,mode:'enforce',priority:50,message:'',clauses:[[blankGroup()]]});
+const lines=v=>(v||[]).join('\n');
+const parseLines=t=>t.split('\n').map(x=>x.trim()).filter(Boolean);
+
+async function load(){
+  try{
+    const data=await api('/api/rules');rules=data.rules;renderRows();renderBanner(data);
+  }catch(e){$('#banner').className='banner err';$('#bannerText').textContent='Error: '+e.message}
+}
+function renderBanner(data){
+  const g=data.guard||{},b=$('#banner');
+  if(g.error){b.className='banner err';$('#bannerText').textContent='policy-guard no responde: '+g.error+'. Los cambios se guardan y se aplicarán al reconectar.';return}
+  const invalid=Object.keys(g.invalid_rules||{});
+  const inSync=g.revision===data.revision;
+  b.className='banner '+(inSync&&!invalid.length?'ok':'warn');
+  let t=`policy-guard aplicando la revisión ${g.revision} · ${g.active_rules} reglas activas`;
+  if(!inSync)t+=` (el dashboard está en la ${data.revision}; sincronizando…)`;
+  if(invalid.length)t+=` · Reglas inválidas omitidas: ${invalid.join(', ')}`;
+  $('#bannerText').textContent=t;
+}
+function renderRows(){
+  $('#rows').innerHTML=rules.map(r=>`<tr class="row" data-id="${esc(r.id)}">
+    <td><label class="switch" onclick="event.stopPropagation()"><input type="checkbox" data-toggle="${esc(r.id)}" ${r.enabled?'checked':''}><span></span></label></td>
+    <td><strong>${esc(r.name)}</strong><div class="muted">${esc(r.id)}</div></td>
+    <td><span class="badge ${r.enabled?esc(r.mode):'off'}">${r.enabled?(r.mode==='enforce'?'Bloquea':'Solo monitorea'):'Desactivada'}</span></td>
+    <td class="muted">${esc(r.message)}</td><td>${r.priority}</td><td>v${r.version}<div class="muted">${esc(r.updated_by)}</div></td></tr>`).join('')||'<tr><td colspan="6" class="muted">No hay reglas.</td></tr>';
+}
+$('#rows').addEventListener('click',e=>{const tr=e.target.closest('tr.row');if(tr&&!e.target.closest('.switch'))openRule(tr.dataset.id)});
+$('#rows').addEventListener('change',async e=>{
+  const id=e.target.dataset.toggle;if(!id)return;
+  const rule=rules.find(r=>r.id===id);
+  try{const res=await api('/api/rules/'+encodeURIComponent(id),{method:'PUT',body:JSON.stringify({...rule,enabled:e.target.checked})});toast(res)}catch(err){alert(err.message)}
+  load();
+});
+function toast(res){const b=$('#banner');b.className='banner '+(res.applied?'ok':'warn');$('#bannerText').textContent=res.applied?`Regla aplicada de inmediato en policy-guard (revisión ${res.revision}).`:(res.warning||'Guardada; pendiente de sincronizar.')}
+
+function openRule(id){
+  isNew=!id;draft=id?JSON.parse(JSON.stringify(rules.find(r=>r.id===id))):blankRule();history=[];
+  $('#drawerTitle').textContent=isNew?'Nueva regla':draft.name;$('#deleteBtn').hidden=isNew;$('#saveNote').textContent='';
+  renderDrawer();$('#drawer').classList.add('open');$('#backdrop').classList.add('open');
+  if(!isNew)api(`/api/rules/${encodeURIComponent(id)}/history`).then(h=>{history=h.history;renderHistory()}).catch(()=>{});
+}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#backdrop').classList.remove('open')}
+$('#closeBtn').onclick=closeDrawer;$('#backdrop').onclick=closeDrawer;$('#newBtn').onclick=()=>openRule(null);
+
+function groupHtml(ci,gi,g){return `<div class="group" data-c="${ci}" data-g="${gi}">
+  <div class="clause-h"><input type="text" data-f="label" value="${esc(g.label||'')}" placeholder="Nombre del grupo (opcional)" style="max-width:280px"><button class="btn small danger" data-act="del-group">Quitar grupo</button></div>
+  <label>Términos (uno por línea; sin importar acentos, mayúsculas ni leetspeak)</label><textarea data-f="terms">${esc(lines(g.terms))}</textarea>
+  <label>Términos difusos (tolera 1 error de tipeo o transposición, ej. Milei → Miley, Mliey)</label><textarea data-f="fuzzy_terms">${esc(lines(g.fuzzy_terms))}</textarea>
+  <label>Expresiones regulares (una por línea)</label><textarea data-f="regex">${esc(lines(g.regex))}</textarea>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" data-f="case_sensitive" ${g.case_sensitive?'checked':''}> Distinguir mayúsculas en las regex</label></div>`}
+function renderDrawer(){
+  const r=draft;
+  $('#drawerBody').innerHTML=`
+  <div class="grid3"><div><label>Nombre</label><input type="text" id="fName" value="${esc(r.name)}"></div>
+    <div><label>Identificador ${isNew?'':'(no editable)'}</label><input type="text" id="fId" value="${esc(r.id)}" ${isNew?'':'disabled'} placeholder="ej. proyecto_falcon"></div>
+    <div><label>Prioridad</label><input type="number" id="fPriority" value="${r.priority}"></div></div>
+  <label>Descripción</label><input type="text" id="fDesc" value="${esc(r.description||'')}">
+  <div class="grid2"><div><label>Modo</label><select id="fMode"><option value="enforce" ${r.mode==='enforce'?'selected':''}>Bloquear (403)</option><option value="monitor" ${r.mode==='monitor'?'selected':''}>Solo monitorear (permite y registra)</option></select></div>
+    <div><label>Estado</label><select id="fEnabled"><option value="true" ${r.enabled?'selected':''}>Activa</option><option value="false" ${!r.enabled?'selected':''}>Desactivada</option></select></div></div>
+  <label>Mensaje que verá el usuario al bloquearse</label><textarea id="fMessage" style="min-height:52px;font-family:inherit;font-size:14px">${esc(r.message)}</textarea>
+  <div class="head" style="margin-top:20px"><h2 style="font-size:15px">Condiciones</h2><button class="btn small" id="addClause">Añadir cláusula (O)</button></div>
+  <div class="help">Cada cláusula es una alternativa (O). Dentro de una cláusula, todos los grupos deben coincidir (Y).</div>
+  <div id="clauses">${r.clauses.map((c,ci)=>`<div class="clause" data-c="${ci}"><div class="clause-h"><span>Cláusula ${ci+1}${ci?' · <span class="muted">o bien</span>':''}</span><span><button class="btn small" data-act="add-group" data-c="${ci}">Añadir grupo (Y)</button> <button class="btn small danger" data-act="del-clause" data-c="${ci}">Quitar</button></span></div>${c.map((g,gi)=>(gi?'<div class="and">Y</div>':'')+groupHtml(ci,gi,g)).join('')}</div>`).join('')}</div>
+  <div id="errs"></div>
+  <div class="test"><strong>Probar esta regla (borrador)</strong><div class="help">Se evalúa sin guardar ni registrar nada.</div>
+    <textarea id="tText" style="font-family:inherit;font-size:14px" placeholder="Escriba un prompt de ejemplo…"></textarea>
+    <div style="margin-top:8px"><button class="btn small" id="tRun">Probar borrador</button></div><div id="tOut"></div></div>
+  <div id="histBox"></div>`;
+  $('#addClause').onclick=()=>{syncDraft();draft.clauses.push([blankGroup()]);renderDrawer()};
+  $('#tRun').onclick=()=>runTest(true);
+  renderHistory();
+}
+$('#drawerBody').addEventListener('click',e=>{
+  const act=e.target.dataset.act;if(!act)return;syncDraft();
+  const gEl=e.target.closest('.group'),cEl=e.target.closest('.clause');
+  if(act==='add-group'){draft.clauses[+e.target.dataset.c].push(blankGroup())}
+  if(act==='del-clause'){draft.clauses.splice(+e.target.dataset.c,1);if(!draft.clauses.length)draft.clauses.push([blankGroup()])}
+  if(act==='del-group'){const c=draft.clauses[+gEl.dataset.c];c.splice(+gEl.dataset.g,1);if(!c.length)draft.clauses.splice(+gEl.dataset.c,1);if(!draft.clauses.length)draft.clauses.push([blankGroup()])}
+  if(act==='rollback'){doRollback(+e.target.dataset.v);return}
+  renderDrawer();
+});
+function syncDraft(){
+  if(!$('#fName'))return;
+  draft.name=$('#fName').value.trim();if(isNew)draft.id=$('#fId').value.trim();
+  draft.priority=parseInt($('#fPriority').value,10)||0;draft.description=$('#fDesc').value.trim();
+  draft.mode=$('#fMode').value;draft.enabled=$('#fEnabled').value==='true';draft.message=$('#fMessage').value.trim();
+  document.querySelectorAll('#clauses .group').forEach(el=>{
+    const g=draft.clauses[+el.dataset.c][+el.dataset.g],val=f=>el.querySelector(`[data-f="${f}"]`);
+    g.label=val('label').value.trim();g.terms=parseLines(val('terms').value);g.fuzzy_terms=parseLines(val('fuzzy_terms').value);
+    g.regex=parseLines(val('regex').value);g.case_sensitive=val('case_sensitive').checked;
+  });
+}
+function cleanRule(){syncDraft();const r=JSON.parse(JSON.stringify(draft));delete r.version;delete r.updated_at;delete r.updated_by;
+  r.clauses=r.clauses.map(c=>c.map(g=>{const o={};if(g.label)o.label=g.label;for(const k of['terms','fuzzy_terms','regex'])if(g[k].length)o[k]=g[k];if(g.case_sensitive)o.case_sensitive=true;return o}));return r}
+function showErrors(list){$('#errs').innerHTML=list&&list.length?`<ul class="errlist">${list.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+function showResult(out,res){
+  if(res.valid===false){out.innerHTML=`<div class="result block">Regla inválida:<br>${res.errors.map(esc).join('<br>')}</div>`;return}
+  out.innerHTML=res.allowed?`<div class="result pass">✅ Permitido — ninguna regla activa coincide.${res.monitored?.length?`<br>Monitoreo: ${res.monitored.map(esc).join(', ')}`:''}</div>`
+    :`<div class="result block">⛔ Bloqueado por <b>${esc(res.rule)}</b><br>“${esc(res.message)}”</div>`;
+}
+async function runTest(useDraft){
+  const out=$('#tOut');out.innerHTML='';
+  try{const body={text:$('#tText').value};if(useDraft)body.rule=cleanRule();showResult(out,await api('/api/rules/test',{method:'POST',body:JSON.stringify(body)}))}
+  catch(e){out.innerHTML=`<div class="result block">${esc(e.message)}</div>`}
+}
+$('#saveBtn').onclick=async()=>{
+  const btn=$('#saveBtn');btn.disabled=true;showErrors([]);
+  try{
+    const rule=cleanRule();
+    const res=isNew?await api('/api/rules',{method:'POST',body:JSON.stringify(rule)}):await api('/api/rules/'+encodeURIComponent(rule.id),{method:'PUT',body:JSON.stringify(rule)});
+    toast(res);closeDrawer();load();
+  }catch(e){showErrors(e.errors||[e.message])}
+  btn.disabled=false;
+};
+$('#deleteBtn').onclick=async()=>{
+  if(!confirm(`¿Eliminar la regla “${draft.name}”? Dejará de aplicarse de inmediato. Podrá recuperarla desde su historial.`))return;
+  try{toast(await api('/api/rules/'+encodeURIComponent(draft.id),{method:'DELETE'}));closeDrawer();load()}catch(e){showErrors([e.message])}
+};
+function renderHistory(){
+  const box=$('#histBox');if(!box)return;
+  if(isNew||!history.length){box.innerHTML='';return}
+  box.innerHTML=`<div class="head" style="margin-top:22px"><h2 style="font-size:15px">Historial</h2></div>`+history.map(h=>`<div class="hist"><span><b>v${h.version}</b> · ${esc(h.action)} · ${esc(h.changed_by)} <span class="muted">${new Date(h.changed_at).toLocaleString()}</span></span>${h.snapshot&&h.action!=='delete'&&h.version!==draft.version?`<button class="btn small" data-act="rollback" data-v="${h.version}">Restaurar</button>`:''}</div>`).join('');
+}
+async function doRollback(v){
+  if(!confirm(`¿Restaurar la versión ${v}? Se aplicará de inmediato.`))return;
+  try{toast(await api(`/api/rules/${encodeURIComponent(draft.id)}/rollback`,{method:'POST',body:JSON.stringify({version:v})}));closeDrawer();load()}catch(e){showErrors([e.message])}
+}
+// Prueba global contra las reglas activas
+$('#testAllBtn').onclick=()=>{
+  isNew=false;draft={id:'',name:'',clauses:[]};history=[];$('#drawerTitle').textContent='Probar contra las reglas activas';$('#deleteBtn').hidden=true;$('#saveBtn').hidden=true;
+  $('#drawerBody').innerHTML=`<div class="help">Evalúa un texto contra el conjunto de reglas que hoy aplica el policy-guard. No queda registrado.</div><textarea id="tText" style="font-family:inherit;font-size:14px;min-height:120px" placeholder="Escriba un prompt…"></textarea><div style="margin-top:8px"><button class="btn primary" id="tRunAll">Probar</button></div><div id="tOut"></div>`;
+  $('#tRunAll').onclick=()=>runTest(false);$('#drawer').classList.add('open');$('#backdrop').classList.add('open');
+};
+const origClose=closeDrawer;$('#closeBtn').onclick=$('#backdrop').onclick=()=>{origClose();$('#saveBtn').hidden=false};
+load();setInterval(()=>{if(!$('#drawer').classList.contains('open'))load()},10000);
+</script>
+</body>
+</html>

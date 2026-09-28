@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.0 — 2026-09-28
+
+Consola de gobierno con reglas editables en caliente y reportería de uso de IA con un modelo local.
+
+| Cambio | Resultado |
+|---|---|
+| Reglas | `/rules` permite crear, editar, activar/desactivar, probar y restaurar reglas; se aplican en el guard en milisegundos |
+| Motor | `policy-guard/engine.py`: cláusulas O/Y, términos, difusos (typos) y regex; modos `enforce` y `monitor` |
+| Historial | Cada cambio guarda versión, autor y foto; permite rollback |
+| Analítica | `/usage`: tareas, automatización vs aumentación, explorador por ocupación, con Ollama local |
+| Red | Puente `ollama_bridge` en HAProxy y red interna `analytics`; sin nuevos bindings en el host |
+| Pruebas | Tests del motor, de las APIs y del worker; 3 checks nuevos en `smoke-test.sh` |
+
+Ver [ADR-004](docs/ADR-004-REGLAS-Y-ANALITICA.md). Para usarlo: instalar Ollama, ejecutar `make ollama` y recrear con `./scripts/mac-up.sh`.
+
 ## 2.0.2 — 2026-09-03
 
 Corrige el falso negativo de `mac-up.sh` al comprobar `host-publisher`: bajo `set -o pipefail`, `grep -q` podía cerrar la tubería después de encontrar el servicio y hacer que Docker Compose terminara con SIGPIPE (`141`). El script ahora captura primero la lista completa de servicios y valida después sobre ese valor. La sintaxis fue comprobada con Bash 3.2.
